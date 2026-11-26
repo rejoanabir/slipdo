@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Payment Receipt - Fast Branded Receipts for Small Business',
+  title: 'SlipDo — Smart Digital Receipts for Bangladesh & Beyond',
   description: 'Create branded PDF & thermal receipts, send via WhatsApp, email or SMS in under 30 seconds.',
 };
 

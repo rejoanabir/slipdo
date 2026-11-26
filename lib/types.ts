@@ -1,91 +1,82 @@
-export type Currency = 'BDT' | 'USD' | 'EUR' | 'INR' | 'GBP';
+export type Currency = 'BDT' | 'USD' | 'EUR' | 'INR';
 
-export type PaymentMethod = 'Cash' | 'bKash' | 'Nagad' | 'Rocket' | 'Bank Card' | 'Bank Transfer' | 'Other';
+export type PaymentMethod = 'bKash' | 'Nagad' | 'Rocket' | 'Cash' | 'Bank' | 'Bank Card';
 
-export type PaymentStatus = 'Paid' | 'Partial' | 'Unpaid' | 'Void';
+export type PaymentStatus = 'Paid' | 'Due' | 'Void';
 
-export type TemplateId = 'modern-emerald' | 'classic-formal' | 'clean-minimal' | 'thermal-pos' | 'bangla-first';
+export type TemplateId =
+  | 'modern-emerald'
+  | 'bangla-memo'
+  | 'classic-formal'
+  | 'clean-minimalist'
+  | 'thermal-pos';
+
+export type LogoLockup = 'voucher-check' | 'monogram-s';
 
 export interface Business {
   id: string;
   name: string;
-  tagline?: string;
+  nameBn?: string;
+  category: string;
+  categoryBn?: string;
+  address: string;
+  phone: string;
+  bin: string;
   logoUrl?: string;
   currency: Currency;
   currencySymbol: string;
-  phone: string;
-  email: string;
-  address: string;
-  binTin?: string; // BIN or TIN
-  receiptPrefix: string;
-  nextNumber: number;
-  defaultTaxRate: number;
-  defaultNotes: string;
-  themeColor: string;
 }
 
 export interface Customer {
   id: string;
-  businessId: string;
   name: string;
   phone: string;
-  email?: string;
-  address?: string;
+  email: string;
   totalSpent: number;
-  receiptCount: number;
-  createdAt: string;
+  receipts: number;
+  lastVisit: string;
 }
 
 export interface ReceiptItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  taxRate: number; // percentage, e.g. 5 for 5%
-  lineTotal: number;
+  id?: number | string;
+  desc: string;
+  descBn?: string;
+  qty: number;
+  price: number;
+}
+
+export interface ReceiptTotals {
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
+  total: number;
 }
 
 export interface Receipt {
   id: string;
-  businessId: string;
-  customerId?: string;
+  receiptNo?: string;
+  token: string;
+  date: string;
   customerName: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  customerAddress?: string;
-  number: string; // e.g. RCP-2026-0001
-  issueDate: string; // YYYY-MM-DD
-  dueDate?: string;
-  currency: Currency;
-  currencySymbol: string;
-  items: ReceiptItem[];
-  subtotal: number;
-  discountType: 'percentage' | 'flat';
-  discountValue: number;
-  discountAmount: number;
-  shippingFee: number;
-  taxTotal: number;
-  total: number;
+  customerPhone: string;
   paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-  amountPaid: number;
-  amountDue: number;
-  transactionId?: string;
-  templateId: TemplateId;
+  status: PaymentStatus;
+  template: TemplateId;
+  taxRate: number;
+  enableTax?: boolean;
+  discount: number;
+  enableDiscount?: boolean;
+  items: ReceiptItem[];
+  total: number;
+  totals?: ReceiptTotals;
   notes?: string;
-  terms?: string;
-  publicToken: string;
-  createdAt: string;
-  updatedAt: string;
+  notesBn?: string;
 }
 
-export interface Subscription {
-  plan: 'free' | 'pro' | 'business';
-  status: 'active' | 'trialing' | 'past_due' | 'canceled';
-  receiptsThisMonth: number;
-  maxMonthlyReceipts: number;
-  smsThisMonth: number;
-  maxMonthlySms: number;
-  ocrThisMonth: number;
-  maxMonthlyOcr: number;
+export interface FigmaChecklistItem {
+  id: string;
+  group: string;
+  tag: string;
+  label: string;
+  done: boolean;
 }

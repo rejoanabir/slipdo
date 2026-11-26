@@ -1,5 +1,5 @@
-// Utilities for formatting currency, numbers, and dates
-// Supports South Asian comma format (lakh / crore) and Bangla numerals
+// Formatting helpers matching SlipDo prototype specifications
+// Supports South Asian comma notation (3-2-2) & Bengali numerals
 
 const BANGLA_DIGITS: { [key: string]: string } = {
   '0': '০',
@@ -15,97 +15,51 @@ const BANGLA_DIGITS: { [key: string]: string } = {
   '.': '.',
 };
 
-/**
- * Converts Western digits to Bengali numerals
- */
-export function toBengaliDigits(input: string | number): string {
-  const str = input.toString();
-  return str.replace(/[0-9]/g, (match) => BANGLA_DIGITS[match] || match);
+export function toBengaliDigits(str: string | number): string {
+  if (str === null || str === undefined) return '';
+  return str.toString().replace(/[0-9]/g, (w) => BANGLA_DIGITS[w] || w);
 }
 
-/**
- * Formats a number using South Asian numbering (e.g. 1,23,456.00 for BDT)
- */
-export function formatSouthAsianNumber(amount: number): string {
-  const [integerPart, decimalPart] = amount.toFixed(2).split('.');
-  
-  if (integerPart.length <= 3) {
-    return `${integerPart}.${decimalPart}`;
-  }
+export function formatSouthAsian(num: number, useBengali = false): string {
+  const parts = Number(num || 0).toFixed(2).split('.');
+  let integerPart = parts[0];
+  const decimalPart = parts[1];
 
-  const lastThree = integerPart.substring(integerPart.length - 3);
-  const rest = integerPart.substring(0, integerPart.length - 3);
-  
-  // Format remaining with pairs of 2 digits
-  const formattedRest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
-  return `${formattedRest},${lastThree}.${decimalPart}`;
-}
-
-/**
- * Formats money with the symbol according to currency convention
- */
-export function formatMoney(amount: number, currency: string = 'BDT', useBengaliDigits: boolean = false): string {
-  const num = Number(amount) || 0;
-  let formatted = '';
-
-  if (currency === 'BDT' || currency === 'INR') {
-    formatted = formatSouthAsianNumber(num);
+  let result = '';
+  if (integerPart.length > 3) {
+    const lastThree = integerPart.substring(integerPart.length - 3);
+    const rest = integerPart.substring(0, integerPart.length - 3);
+    const withCommas = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+    result = withCommas + ',' + lastThree;
   } else {
-    formatted = num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    result = integerPart;
   }
 
-  const symbol = getCurrencySymbol(currency);
-
-  if (useBengaliDigits) {
-    const bnDigits = toBengaliDigits(formatted);
-    return `${symbol} ${bnDigits}`;
-  }
-
-  return `${symbol} ${formatted}`;
+  result = result + '.' + decimalPart;
+  return useBengali ? toBengaliDigits(result) : result;
 }
 
-export function getCurrencySymbol(currency: string): string {
-  switch (currency) {
-    case 'BDT':
-      return '৳';
-    case 'USD':
-      return '$';
-    case 'EUR':
-      return '€';
-    case 'INR':
-      return '₹';
-    case 'GBP':
-      return '£';
-    default:
-      return '৳';
-  }
+export function formatCurrency(num: number, forceBn: boolean | null = null): string {
+  const isBn = forceBn ?? false;
+  return `${isBn ? '৳' : '৳'} ${formatSouthAsian(num, isBn)}`;
 }
 
-/**
- * Formats dates nicely (e.g. 27 Nov 2026)
- */
-export function formatDate(dateStr: string, locale: 'en' | 'bn' = 'en'): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
+export function calcTotals(
+  items: { qty: number; price: number }[],
+  taxRate = 0,
+  enableTax = true,
+  discount = 0,
+  enableDiscount = true
+) {
+  const subtotal = items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
+  const taxAmount = enableTax && taxRate > 0 ? (subtotal * taxRate) / 100 : 0;
+  const discountAmount = enableDiscount && discount > 0 ? Math.min(discount, subtotal + taxAmount) : 0;
+  const total = Math.max(0, subtotal + taxAmount - discountAmount);
 
-  if (locale === 'bn') {
-    const monthsBn = [
-      'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
-      'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
-    ];
-    const day = toBengaliDigits(date.getDate());
-    const month = monthsBn[date.getMonth()];
-    const year = toBengaliDigits(date.getFullYear());
-    return `${day} ${month}, ${year}`;
-  }
-
-  return date.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  return {
+    subtotal,
+    taxAmount,
+    discountAmount,
+    total,
+  };
 }

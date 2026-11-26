@@ -2,201 +2,213 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../../lib/storage';
-import { Business } from '../../lib/types';
-import { Language } from '../../lib/i18n';
+import { Business, LogoLockup } from '../../lib/types';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
-import { BusinessModal } from '../../components/BusinessModal';
-import { CheckCircleIcon, SparklesIcon } from '../../components/Icons';
+import { BusinessDrawer } from '../../components/BusinessDrawer';
+import { SlipDoLogo } from '../../components/SlipDoLogo';
+import { SSLCommerzModal } from '../../components/SSLCommerzModal';
 
 export default function SettingsPage() {
-  const [lang, setLang] = useState<Language>('en');
-  const [business, setBusiness] = useState<Business>(StorageService.getBusiness());
-  const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro'>('free');
-  const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [lang, setLang] = useState<'en' | 'bn'>('en');
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [activeBiz, setActiveBiz] = useState<Business | null>(null);
+  const [logoLockup, setLogoLockup] = useState<LogoLockup>('voucher-check');
+  const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
+  const [isSslModalOpen, setIsSslModalOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    setBusiness(StorageService.getBusiness());
+    setMounted(true);
+    setBusinesses(StorageService.getBusinesses());
+    setActiveBiz(StorageService.getActiveBusiness());
+    setLogoLockup(StorageService.getLogoLockup());
   }, []);
 
-  const handleUpgradePro = () => {
-    setBillingNotice('Connecting to SSLCommerz Bangladesh Gateway (Sandbox mode)...');
-    setTimeout(() => {
-      setSelectedPlan('pro');
-      setBillingNotice('🎉 Successfully activated Pro Plan (Sandbox test)!');
-      setTimeout(() => setBillingNotice(null), 4000);
-    }, 1500);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
   };
 
+  const handleLogoChange = (lockup: LogoLockup) => {
+    setLogoLockup(lockup);
+    StorageService.setLogoLockup(lockup);
+    showToast(`Logo lockup switched to: ${lockup === 'voucher-check' ? 'Voucher + Checkmark' : 'Monogram S'}`);
+  };
+
+  const currentBiz = activeBiz || (businesses[0] ?? {
+    id: 'biz_1',
+    name: 'Bengal Gadget Studio',
+    category: 'Electronics & Smart Tech',
+    address: 'House #42, Road #11, Banani, Dhaka-1213',
+    phone: '+880 1711-000000',
+    bin: '002345891-0101',
+    currency: 'BDT',
+    currencySymbol: '৳',
+  });
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F1F5F9] pb-24 md:pb-10 font-sans">
       <Navbar
-        business={business}
+        business={currentBiz}
         lang={lang}
         onToggleLang={() => setLang(lang === 'en' ? 'bn' : 'en')}
-        onOpenBusinessSettings={() => setIsBusinessModalOpen(true)}
+        onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-neutral-900">
-            {lang === 'bn' ? 'সেটিংস ও সাবস্ক্রিপশন' : 'Settings & Billing'}
-          </h1>
-          <p className="text-xs text-neutral-500">
-            Manage your store details, receipt branding, and subscription plan
-          </p>
-        </div>
-
-        {billingNotice && (
-          <div className="p-4 bg-emerald-100 border border-emerald-300 rounded-2xl text-emerald-900 text-xs font-bold animate-pulse">
-            {billingNotice}
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-5">
+        {toast && (
+          <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg animate-fade-in flex items-center gap-2">
+            <span>✓</span>
+            <span>{toast}</span>
           </div>
         )}
 
-        {/* Store Profile Card */}
-        <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-sm space-y-4">
-          <div className="flex justify-between items-start">
+        <div>
+          <h2 className="font-display font-bold text-xl text-slate-900">Settings & Branding</h2>
+          <p className="text-xs text-slate-500">
+            Manage your store details, logo lockup preference, and subscription tiers
+          </p>
+        </div>
+
+        {/* Logo Lockup Concept (Designer Decision) Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft space-y-3">
+          <div>
+            <h3 className="font-display font-bold text-sm text-slate-900">
+              Logo Lockup Concept (Designer Decision)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Click to preview both options live in the app header and templates
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => handleLogoChange('voucher-check')}
+              className={`p-3.5 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
+                logoLockup === 'voucher-check'
+                  ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <SlipDoLogo lockup="voucher-check" size={40} />
+              <div>
+                <p className="font-display font-bold text-xs text-slate-900">Concept A: Voucher + Checkmark</p>
+                <p className="text-[11px] text-slate-500">Perforated ticket edges with verified checkmark</p>
+                {logoLockup === 'voucher-check' && (
+                  <span className="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    CURRENT SELECTION
+                  </span>
+                )}
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleLogoChange('monogram-s')}
+              className={`p-3.5 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
+                logoLockup === 'monogram-s'
+                  ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <SlipDoLogo lockup="monogram-s" size={40} />
+              <div>
+                <p className="font-display font-bold text-xs text-slate-900">Concept B: Monogram "S"</p>
+                <p className="text-[11px] text-slate-500">Sleek fintech curve with accent dot</p>
+                {logoLockup === 'monogram-s' && (
+                  <span className="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    CURRENT SELECTION
+                  </span>
+                )}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Business Storefront Details */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft space-y-3">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-neutral-900">Store & Merchant Profile</h2>
-              <p className="text-xs text-neutral-500">
-                This appears on your headers, QR verification, and print receipts
-              </p>
+              <h3 className="font-display font-bold text-sm text-slate-900">Active Business Profile</h3>
+              <p className="text-xs text-slate-500">This information appears on all printed & shared receipts</p>
             </div>
             <button
-              onClick={() => setIsBusinessModalOpen(true)}
-              className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-xs font-bold text-neutral-800"
+              onClick={() => setIsStoreDrawerOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700"
             >
-              Edit Info
+              Switch Store
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
-            <div>
-              <span className="text-neutral-400 font-medium block">Business Name</span>
-              <span className="font-bold text-neutral-800 text-sm">{business.name}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Store Name</span>
+              <span className="font-bold text-slate-900 text-sm">{currentBiz.name}</span>
             </div>
-            <div>
-              <span className="text-neutral-400 font-medium block">Phone / WhatsApp</span>
-              <span className="font-semibold text-neutral-800">{business.phone}</span>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Category</span>
+              <span className="font-semibold text-slate-800">{currentBiz.category}</span>
             </div>
-            <div>
-              <span className="text-neutral-400 font-medium block">Address</span>
-              <span className="text-neutral-700">{business.address}</span>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Phone</span>
+              <span className="font-semibold text-slate-800">{currentBiz.phone}</span>
             </div>
-            <div>
-              <span className="text-neutral-400 font-medium block">BIN / Tax ID</span>
-              <span className="font-mono text-neutral-700">{business.binTin || 'Not configured'}</span>
-            </div>
-            <div>
-              <span className="text-neutral-400 font-medium block">Receipt Prefix</span>
-              <span className="font-mono font-bold text-emerald-700">{business.receiptPrefix || 'RCP'}</span>
-            </div>
-            <div>
-              <span className="text-neutral-400 font-medium block">Currency</span>
-              <span className="font-bold text-neutral-800">{business.currency} ({business.currencySymbol})</span>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">BIN / Tax ID</span>
+              <span className="font-mono font-bold text-slate-800">{currentBiz.bin}</span>
             </div>
           </div>
         </div>
 
         {/* Subscription Plans Card */}
-        <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-sm space-y-5">
-          <div className="flex justify-between items-center">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-soft space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-neutral-900">Subscription Plans</h2>
-              <p className="text-xs text-neutral-500">
-                Supports bKash, Nagad, Rocket and Cards via SSLCommerz
-              </p>
+              <h3 className="font-display font-bold text-base text-slate-900">Subscription Plans</h3>
+              <p className="text-xs text-slate-500">Supports bKash, Nagad, Rocket and Cards via SSLCommerz</p>
             </div>
             <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
-              Current Plan: {selectedPlan.toUpperCase()}
+              FREE ACTIVE
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            {/* Free Plan */}
-            <div className={`p-5 rounded-2xl border-2 transition ${selectedPlan === 'free' ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200'}`}>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-sm text-neutral-800">Free Tier</span>
-                <span className="text-base font-extrabold text-neutral-900">৳০ / month</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Free Tier */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+              <div className="flex justify-between items-baseline">
+                <span className="font-display font-bold text-sm text-slate-800">Free Tier</span>
+                <span className="font-display font-extrabold text-base text-slate-900">৳০ / month</span>
               </div>
-              <p className="text-xs text-neutral-500 mb-4">Perfect for individual freelancers & starting shops</p>
-
-              <ul className="text-xs text-neutral-600 space-y-2 mb-6">
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>30 Receipts per month</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>WhatsApp, Email & Public Link sharing</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>Standard Templates & QR verification</span>
-                </li>
+              <ul className="text-xs text-slate-600 space-y-1.5">
+                <li>✓ 30 receipts per month</li>
+                <li>✓ 1-Click WhatsApp sharing</li>
+                <li>✓ Standard voucher templates</li>
               </ul>
-
-              {selectedPlan === 'free' ? (
-                <div className="w-full py-2.5 text-center bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl">
-                  Active Plan
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSelectedPlan('free')}
-                  className="w-full py-2.5 text-center border border-neutral-300 text-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-100"
-                >
-                  Downgrade to Free
-                </button>
-              )}
             </div>
 
-            {/* Pro Plan */}
-            <div className={`p-5 rounded-2xl border-2 relative transition ${selectedPlan === 'pro' ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-emerald-200 bg-emerald-50/20'}`}>
-              <div className="absolute -top-3 right-4 bg-emerald-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-                Popular
+            {/* Pro Tier */}
+            <div className="p-4 rounded-xl border-2 border-emerald-600 bg-emerald-50/50 space-y-3">
+              <div className="flex justify-between items-baseline">
+                <span className="font-display font-bold text-sm text-emerald-950">SlipDo Pro</span>
+                <span className="font-display font-extrabold text-base text-emerald-900">৳৪৯৯ / month</span>
               </div>
-
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-sm text-emerald-950 flex items-center gap-1.5">
-                  <SparklesIcon size={16} className="text-emerald-600" />
-                  <span>Pro Business</span>
-                </span>
-                <span className="text-base font-extrabold text-emerald-900">৳২৯৯ / month</span>
-              </div>
-              <p className="text-xs text-neutral-500 mb-4">Unlimited power for growing shops & retail businesses</p>
-
-              <ul className="text-xs text-neutral-700 space-y-2 mb-6 font-medium">
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span><strong>Unlimited</strong> receipts every month</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>All 5 Premium Templates + Remove Watermark</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>100 SMS notifications included / month</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-emerald-600" />
-                  <span>Gemini AI OCR paper receipt scanner</span>
-                </li>
+              <ul className="text-xs text-slate-700 space-y-1.5 font-medium">
+                <li>✓ <strong>Unlimited</strong> receipts</li>
+                <li>✓ All 5 Premium Templates</li>
+                <li>✓ Custom logo & no watermark</li>
+                <li>✓ 100 SMS notifications / mo</li>
               </ul>
-
-              {selectedPlan === 'pro' ? (
-                <div className="w-full py-2.5 text-center bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md">
-                  Active Pro Member
-                </div>
-              ) : (
-                <button
-                  onClick={handleUpgradePro}
-                  className="w-full py-2.5 text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition"
-                >
-                  Upgrade via bKash / SSLCommerz
-                </button>
-              )}
+              <button
+                onClick={() => setIsSslModalOpen(true)}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-colors"
+              >
+                Upgrade with SSLCommerz (bKash)
+              </button>
             </div>
           </div>
         </div>
@@ -204,15 +216,24 @@ export default function SettingsPage() {
 
       <BottomNav lang={lang} />
 
-      <BusinessModal
-        business={business}
-        isOpen={isBusinessModalOpen}
-        onClose={() => setIsBusinessModalOpen(false)}
-        onSave={(updated) => {
-          setBusiness(updated);
-          StorageService.saveBusiness(updated);
+      <BusinessDrawer
+        isOpen={isStoreDrawerOpen}
+        onClose={() => setIsStoreDrawerOpen(false)}
+        businesses={businesses}
+        activeBusiness={currentBiz}
+        onSelectBusiness={(b) => {
+          setActiveBiz(b);
+          StorageService.setActiveBusiness(b.id);
         }}
         lang={lang}
+      />
+
+      <SSLCommerzModal
+        isOpen={isSslModalOpen}
+        onClose={() => setIsSslModalOpen(false)}
+        onSuccess={(gw) => {
+          showToast(`🎉 Upgraded to SlipDo Pro via ${gw}!`);
+        }}
       />
     </div>
   );

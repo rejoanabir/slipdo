@@ -4,19 +4,58 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-neutral-900 antialiased font-sans selection:bg-emerald-200 selection:text-emerald-900;
+    @apply bg-[#F1F5F9] text-slate-900 antialiased font-sans selection:bg-emerald-200 selection:text-emerald-900;
   }
 }
 
-/* Custom Print Optimization for A4 and Thermal Roll receipts */
+.font-bn {
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+}
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Hind Siliguri', 'Inter', sans-serif;
+}
+
+/* Hide scrollbars where needed */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom subtle scrollbars */
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+.thin-scroll::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Receipt Double Border Classic Formal */
+.classic-double-border {
+  border: 3px double #1E293B;
+  box-shadow: inset 0 0 0 3px #FFFFFF, inset 0 0 0 4px #CBD5E1;
+}
+
+/* Thermal paper serrated edge */
+.thermal-edge-top {
+  background-image: radial-gradient(circle at 8px 0px, transparent 5px, #FFFFFF 5.5px);
+  background-size: 16px 8px;
+  background-repeat: repeat-x;
+  height: 8px;
+}
+
+.thermal-edge-bottom {
+  background-image: radial-gradient(circle at 8px 8px, transparent 5px, #FFFFFF 5.5px);
+  background-size: 16px 8px;
+  background-repeat: repeat-x;
+  height: 8px;
+}
+
+/* Print Optimization for Thermal POS and A4 Vouchers */
 @media print {
   body * {
     visibility: hidden;
   }
-  .receipt-paper, .receipt-paper * {
+  #printable-receipt-area, #printable-receipt-area * {
     visibility: visible;
   }
-  .receipt-paper {
+  #printable-receipt-area {
     position: absolute;
     left: 0;
     top: 0;
@@ -29,7 +68,7 @@
   }
 }
 
-/* Safe area support for mobile devices */
+/* Mobile safe area */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 1rem);
 }

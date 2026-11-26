@@ -1,11 +1,14 @@
-import { Business, Customer, Receipt } from './types';
-import { DEFAULT_BUSINESS, INITIAL_CUSTOMERS, INITIAL_RECEIPTS } from './mockData';
+import { Business, Customer, Receipt, LogoLockup, FigmaChecklistItem, ReceiptTotals } from './types';
+import { INITIAL_BUSINESSES, INITIAL_CUSTOMERS, INITIAL_RECEIPTS, FIGMA_CHECKLIST_ITEMS } from './mockData';
 
-const STORAGE_KEYS = {
-  BUSINESS: 'pr_business_profile',
-  CUSTOMERS: 'pr_customers_list',
-  RECEIPTS: 'pr_receipts_list',
-  LANG: 'pr_selected_language',
+const KEYS = {
+  ACTIVE_BIZ: 'slipdo_active_biz_id',
+  BUSINESSES: 'slipdo_businesses',
+  CUSTOMERS: 'slipdo_customers',
+  RECEIPTS: 'slipdo_receipts',
+  CHECKLIST: 'slipdo_checklist',
+  LOGO_LOCKUP: 'slipdo_logo_lockup',
+  LANG: 'slipdo_language',
 };
 
 export class StorageService {
@@ -13,27 +16,56 @@ export class StorageService {
     return typeof window !== 'undefined';
   }
 
-  static getBusiness(): Business {
-    if (!this.isClient()) return DEFAULT_BUSINESS;
+  static getBusinesses(): Business[] {
+    if (!this.isClient()) return INITIAL_BUSINESSES;
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.BUSINESS);
-      return data ? JSON.parse(data) : DEFAULT_BUSINESS;
+      const data = localStorage.getItem(KEYS.BUSINESSES);
+      if (!data) {
+        localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(INITIAL_BUSINESSES));
+        return INITIAL_BUSINESSES;
+      }
+      return JSON.parse(data);
     } catch {
-      return DEFAULT_BUSINESS;
+      return INITIAL_BUSINESSES;
     }
   }
 
-  static saveBusiness(business: Business): void {
+  static getActiveBusiness(): Business {
+    const list = this.getBusinesses();
+    if (!this.isClient()) return list[0];
+    try {
+      const activeId = localStorage.getItem(KEYS.ACTIVE_BIZ);
+      const found = list.find((b) => b.id === activeId);
+      return found || list[0];
+    } catch {
+      return list[0];
+    }
+  }
+
+  static setActiveBusiness(bizId: string): void {
     if (!this.isClient()) return;
-    localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(business));
+    localStorage.setItem(KEYS.ACTIVE_BIZ, bizId);
+  }
+
+  static saveBusiness(business: Business): void {
+    const list = this.getBusinesses();
+    const idx = list.findIndex((b) => b.id === business.id);
+    if (idx >= 0) {
+      list[idx] = business;
+    } else {
+      list.push(business);
+    }
+    if (this.isClient()) {
+      localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(list));
+    }
   }
 
   static getCustomers(): Customer[] {
     if (!this.isClient()) return INITIAL_CUSTOMERS;
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
+      const data = localStorage.getItem(KEYS.CUSTOMERS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(INITIAL_CUSTOMERS));
+        localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(INITIAL_CUSTOMERS));
         return INITIAL_CUSTOMERS;
       }
       return JSON.parse(data);
@@ -42,16 +74,16 @@ export class StorageService {
     }
   }
 
-  static saveCustomer(customer: Customer): Customer[] {
+  static saveCustomer(cust: Customer): Customer[] {
     const list = this.getCustomers();
-    const existingIndex = list.findIndex((c) => c.id === customer.id);
-    if (existingIndex >= 0) {
-      list[existingIndex] = customer;
+    const idx = list.findIndex((c) => c.id === cust.id);
+    if (idx >= 0) {
+      list[idx] = cust;
     } else {
-      list.unshift(customer);
+      list.unshift(cust);
     }
     if (this.isClient()) {
-      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(list));
+      localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(list));
     }
     return list;
   }
@@ -59,9 +91,9 @@ export class StorageService {
   static getReceipts(): Receipt[] {
     if (!this.isClient()) return INITIAL_RECEIPTS;
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.RECEIPTS);
+      const data = localStorage.getItem(KEYS.RECEIPTS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(INITIAL_RECEIPTS));
+        localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(INITIAL_RECEIPTS));
         return INITIAL_RECEIPTS;
       }
       return JSON.parse(data);
@@ -71,88 +103,89 @@ export class StorageService {
   }
 
   static getReceiptByToken(token: string): Receipt | undefined {
-    const receipts = this.getReceipts();
-    return receipts.find((r) => r.publicToken === token);
-  }
-
-  static getReceiptById(id: string): Receipt | undefined {
-    const receipts = this.getReceipts();
-    return receipts.find((r) => r.id === id);
+    const list = this.getReceipts();
+    return list.find((r) => r.token === token);
   }
 
   static saveReceipt(receipt: Receipt): Receipt {
-    const receipts = this.getReceipts();
-    const index = receipts.findIndex((r) => r.id === receipt.id);
-    
-    if (index >= 0) {
-      receipts[index] = { ...receipt, updatedAt: new Date().toISOString() };
+    const list = this.getReceipts();
+    const idx = list.findIndex((r) => r.id === receipt.id);
+    if (idx >= 0) {
+      list[idx] = receipt;
     } else {
-      receipts.unshift({
-        ...receipt,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      // Increment business next number
-      const biz = this.getBusiness();
-      this.saveBusiness({
-        ...biz,
-        nextNumber: (biz.nextNumber || 1) + 1,
-      });
-
-      // Update or link customer stats
-      if (receipt.customerName) {
-        const customers = this.getCustomers();
-        const existingCust = customers.find(
-          (c) =>
-            (receipt.customerPhone && c.phone === receipt.customerPhone) ||
-            c.name.toLowerCase() === receipt.customerName.toLowerCase()
-        );
-
-        if (existingCust) {
-          existingCust.totalSpent += receipt.total;
-          existingCust.receiptCount += 1;
-          this.saveCustomer(existingCust);
-        } else {
-          this.saveCustomer({
-            id: 'cust-' + Date.now(),
-            businessId: biz.id,
-            name: receipt.customerName,
-            phone: receipt.customerPhone || '',
-            email: receipt.customerEmail || '',
-            address: receipt.customerAddress || '',
-            totalSpent: receipt.total,
-            receiptCount: 1,
-            createdAt: new Date().toISOString(),
-          });
-        }
-      }
+      list.unshift(receipt);
     }
 
     if (this.isClient()) {
-      localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(receipts));
+      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
     }
+
+    // Link customer stats
+    if (receipt.customerName) {
+      const customers = this.getCustomers();
+      const existing = customers.find(
+        (c) =>
+          (receipt.customerPhone && c.phone === receipt.customerPhone) ||
+          c.name.toLowerCase() === receipt.customerName.toLowerCase()
+      );
+      if (existing) {
+        existing.totalSpent += receipt.total;
+        existing.receipts += 1;
+        existing.lastVisit = 'Just now';
+        this.saveCustomer(existing);
+      } else {
+        this.saveCustomer({
+          id: 'cust_' + Date.now(),
+          name: receipt.customerName,
+          phone: receipt.customerPhone,
+          email: `${receipt.customerName.toLowerCase().replace(/\s+/g, '.')}@client.bd`,
+          totalSpent: receipt.total,
+          receipts: 1,
+          lastVisit: 'Just now',
+        });
+      }
+    }
+
     return receipt;
   }
 
-  static voidReceipt(receiptId: string): Receipt[] {
-    const receipts = this.getReceipts();
-    const target = receipts.find((r) => r.id === receiptId);
-    if (target) {
-      target.paymentStatus = 'Void';
-      target.updatedAt = new Date().toISOString();
-      if (this.isClient()) {
-        localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(receipts));
-      }
+  static getLogoLockup(): LogoLockup {
+    if (!this.isClient()) return 'voucher-check';
+    try {
+      return (localStorage.getItem(KEYS.LOGO_LOCKUP) as LogoLockup) || 'voucher-check';
+    } catch {
+      return 'voucher-check';
     }
-    return receipts;
   }
 
-  static deleteReceipt(receiptId: string): Receipt[] {
-    const receipts = this.getReceipts().filter((r) => r.id !== receiptId);
-    if (this.isClient()) {
-      localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(receipts));
+  static setLogoLockup(lockup: LogoLockup): void {
+    if (!this.isClient()) return;
+    localStorage.setItem(KEYS.LOGO_LOCKUP, lockup);
+  }
+
+  static getChecklist(): FigmaChecklistItem[] {
+    if (!this.isClient()) return FIGMA_CHECKLIST_ITEMS;
+    try {
+      const data = localStorage.getItem(KEYS.CHECKLIST);
+      if (!data) {
+        localStorage.setItem(KEYS.CHECKLIST, JSON.stringify(FIGMA_CHECKLIST_ITEMS));
+        return FIGMA_CHECKLIST_ITEMS;
+      }
+      return JSON.parse(data);
+    } catch {
+      return FIGMA_CHECKLIST_ITEMS;
     }
-    return receipts;
+  }
+
+  static toggleChecklistItem(id: string): FigmaChecklistItem[] {
+    const list = this.getChecklist();
+    const item = list.find((i) => i.id === id);
+    if (item) {
+      item.done = !item.done;
+      if (this.isClient()) {
+        localStorage.setItem(KEYS.CHECKLIST, JSON.stringify(list));
+      }
+    }
+    return list;
   }
 }

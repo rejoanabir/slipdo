@@ -4,238 +4,216 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { StorageService } from '../../lib/storage';
 import { Business, Receipt } from '../../lib/types';
-import { formatMoney, formatDate } from '../../lib/format';
-import { translations, Language } from '../../lib/i18n';
+import { formatCurrency } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
+import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { ShareModal } from '../../components/ShareModal';
-import { BusinessModal } from '../../components/BusinessModal';
 import { ReceiptPreview } from '../../components/ReceiptPreview';
-import { PlusIcon, EyeIcon, Share2Icon, ReceiptIcon } from '../../components/Icons';
 
-export default function ReceiptsListPage() {
-  const [lang, setLang] = useState<Language>('en');
-  const [business, setBusiness] = useState<Business>(StorageService.getBusiness());
+export default function ReceiptsArchivePage() {
+  const [mounted, setMounted] = useState(false);
+  const [lang, setLang] = useState<'en' | 'bn'>('en');
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Unpaid' | 'Void'>('All');
-  const [methodFilter, setMethodFilter] = useState<string>('All');
-
-  const [activeShareReceipt, setActiveShareReceipt] = useState<Receipt | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Due' | 'Void'>('All');
+  const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
+  const [shareReceipt, setShareReceipt] = useState<Receipt | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<Receipt | null>(null);
-  const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
 
   useEffect(() => {
-    setBusiness(StorageService.getBusiness());
+    setMounted(true);
+    setBusinesses(StorageService.getBusinesses());
+    setActiveBiz(StorageService.getActiveBusiness());
     setReceipts(StorageService.getReceipts());
   }, []);
 
-  const filtered = receipts.filter((r) => {
-    const matchesSearch =
-      r.number.toLowerCase().includes(search.toLowerCase()) ||
-      r.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      (r.customerPhone && r.customerPhone.includes(search));
-    const matchesStatus = statusFilter === 'All' || r.paymentStatus === statusFilter;
-    const matchesMethod = methodFilter === 'All' || r.paymentMethod === methodFilter;
-    return matchesSearch && matchesStatus && matchesMethod;
+  const currentBiz = activeBiz || (businesses[0] ?? {
+    id: 'biz_1',
+    name: 'Bengal Gadget Studio',
+    category: 'Electronics & Smart Tech',
+    address: 'House #42, Road #11, Banani, Dhaka-1213',
+    phone: '+880 1711-000000',
+    bin: '002345891-0101',
+    currency: 'BDT',
+    currencySymbol: '৳',
   });
 
+  const filtered = receipts.filter((r) => {
+    const matchesSearch =
+      !search ||
+      r.id.toLowerCase().includes(search.toLowerCase()) ||
+      r.customerName.toLowerCase().includes(search.toLowerCase()) ||
+      r.customerPhone.includes(search);
+    const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F1F5F9] pb-24 md:pb-10 font-sans">
       <Navbar
-        business={business}
+        business={currentBiz}
         lang={lang}
         onToggleLang={() => setLang(lang === 'en' ? 'bn' : 'en')}
-        onOpenBusinessSettings={() => setIsBusinessModalOpen(true)}
+        onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-neutral-900">
-              {lang === 'bn' ? 'সকল রশিদ ও ভাউচার' : 'All Payment Receipts'}
-            </h1>
-            <p className="text-xs text-neutral-500">
-              Browse, search, duplicate or print any issued receipt
-            </p>
+            <h1 className="font-display font-bold text-xl text-slate-900">All Vouchers & Invoices</h1>
+            <p className="text-xs text-slate-500">Search, duplicate, share, or print any issued voucher</p>
           </div>
 
           <Link
             href="/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-bold text-xs shadow-sm self-start sm:self-auto"
           >
-            <PlusIcon size={16} />
-            <span>Create New Receipt</span>
+            + New Receipt
           </Link>
         </div>
 
-        {/* Filter Controls Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+        {/* Filter Bar */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-soft flex flex-col sm:flex-row gap-3 items-center justify-between">
           <input
             type="text"
-            placeholder="Search by receipt #, customer name or phone..."
             value={search}
+            suppressHydrationWarning
+            placeholder="Search by ID, customer name or phone..."
             onChange={(e) => setSearch(e.target.value)}
-            className="text-xs bg-neutral-100 border border-neutral-200 rounded-xl px-3 py-2 w-full md:w-80 outline-none focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs w-full sm:w-72 focus:outline-none focus:border-emerald-500"
           />
 
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            {/* Status Tabs */}
-            <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl text-xs font-medium">
-              {(['All', 'Paid', 'Unpaid', 'Void'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1 rounded-lg transition ${
-                    statusFilter === s
-                      ? 'bg-white font-bold text-neutral-900 shadow-xs'
-                      : 'text-neutral-500 hover:text-neutral-800'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {/* Method Dropdown */}
-            <select
-              value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
-              className="text-xs bg-neutral-100 border border-neutral-200 rounded-xl px-2.5 py-1.5 font-medium outline-none"
-            >
-              <option value="All">All Methods</option>
-              <option value="bKash">bKash</option>
-              <option value="Nagad">Nagad</option>
-              <option value="Rocket">Rocket</option>
-              <option value="Cash">Cash</option>
-              <option value="Bank Card">Bank Card</option>
-            </select>
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl text-xs font-medium">
+            {(['All', 'Paid', 'Due', 'Void'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  statusFilter === s
+                    ? 'bg-white font-bold text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Receipts List */}
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-          {filtered.length === 0 ? (
-            <div className="p-12 text-center space-y-3">
-              <ReceiptIcon size={36} className="mx-auto text-neutral-300" />
-              <p className="text-sm font-semibold text-neutral-600">No receipts found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-semibold uppercase text-[11px] tracking-wider">
-                    <th className="py-3.5 px-6">Receipt #</th>
-                    <th className="py-3.5 px-4">Customer</th>
-                    <th className="py-3.5 px-4">Date</th>
-                    <th className="py-3.5 px-4">Method</th>
-                    <th className="py-3.5 px-4 text-right">Amount</th>
-                    <th className="py-3.5 px-4 text-center">Status</th>
-                    <th className="py-3.5 px-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {filtered.map((receipt) => (
-                    <tr key={receipt.id} className="hover:bg-neutral-50/60 transition">
-                      <td className="py-3.5 px-6 font-mono font-bold text-neutral-900">
-                        {receipt.number}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-neutral-900">{receipt.customerName}</div>
-                        {receipt.customerPhone && (
-                          <div className="text-[11px] text-neutral-500">{receipt.customerPhone}</div>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-neutral-600">{formatDate(receipt.issueDate)}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neutral-100 text-neutral-800">
-                          {receipt.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-neutral-900">
-                        {formatMoney(receipt.total, receipt.currency)}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            receipt.paymentStatus === 'Paid'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : receipt.paymentStatus === 'Void'
-                              ? 'bg-neutral-200 text-neutral-600 line-through'
-                              : 'bg-red-100 text-red-700'
-                          }`}
+        {/* Receipts Table */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100 uppercase text-[11px] tracking-wider">
+                  <th className="py-3 px-4">Receipt #</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Method</th>
+                  <th className="py-3 px-4 text-right">Amount</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">#{r.id}</td>
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-slate-900 block">{r.customerName}</span>
+                      <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
+                    <td className="py-3 px-4 font-bold text-slate-700">{r.paymentMethod}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                      {formatCurrency(r.total, lang === 'bn')}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'Paid'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : r.status === 'Due'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-200 text-slate-600 line-through'
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setPreviewReceipt(r)}
+                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
                         >
-                          {receipt.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setPreviewReceipt(receipt)}
-                            className="p-1.5 rounded-lg text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
-                            title="Preview"
-                          >
-                            <EyeIcon size={16} />
-                          </button>
-                          <button
-                            onClick={() => setActiveShareReceipt(receipt)}
-                            className="p-1.5 rounded-lg text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
-                            title="Share"
-                          >
-                            <Share2Icon size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          👁 Preview
+                        </button>
+                        <button
+                          onClick={() => setShareReceipt(r)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold"
+                        >
+                          Share ↗
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
 
       <BottomNav lang={lang} />
 
-      {activeShareReceipt && (
+      <BusinessDrawer
+        isOpen={isStoreDrawerOpen}
+        onClose={() => setIsStoreDrawerOpen(false)}
+        businesses={businesses}
+        activeBusiness={currentBiz}
+        onSelectBusiness={(b) => {
+          setActiveBiz(b);
+          StorageService.setActiveBusiness(b.id);
+        }}
+        lang={lang}
+      />
+
+      {shareReceipt && (
         <ShareModal
-          receipt={activeShareReceipt}
-          business={business}
+          receipt={shareReceipt}
+          business={currentBiz}
           isOpen={true}
-          onClose={() => setActiveShareReceipt(null)}
+          onClose={() => setShareReceipt(null)}
           lang={lang}
         />
       )}
 
       {previewReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="max-w-2xl w-full bg-transparent my-8 space-y-4">
-            <div className="flex justify-between items-center bg-white px-5 py-3 rounded-2xl shadow">
-              <span className="font-bold text-sm text-neutral-800">
-                Receipt: {previewReceipt.number}
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-transparent my-8 space-y-3">
+            <div className="flex justify-between items-center bg-white px-5 py-3 rounded-2xl shadow-sm">
+              <span className="font-display font-bold text-sm text-slate-900">
+                Voucher #{previewReceipt.id}
               </span>
               <button
                 onClick={() => setPreviewReceipt(null)}
-                className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center font-bold"
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs"
               >
                 ✕
               </button>
             </div>
-            <ReceiptPreview receipt={previewReceipt} business={business} />
+            <ReceiptPreview receipt={previewReceipt} business={currentBiz} />
           </div>
         </div>
       )}
-
-      <BusinessModal
-        business={business}
-        isOpen={isBusinessModalOpen}
-        onClose={() => setIsBusinessModalOpen(false)}
-        onSave={(updated) => {
-          setBusiness(updated);
-          StorageService.saveBusiness(updated);
-        }}
-        lang={lang}
-      />
     </div>
   );
 }
