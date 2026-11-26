@@ -3,6 +3,7 @@
 import React from 'react';
 import { Business } from '../lib/types';
 import { SlipDoLogo } from './SlipDoLogo';
+import { XIcon } from './Icons';
 
 interface BusinessDrawerProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export const BusinessDrawer: React.FC<BusinessDrawerProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            ✕
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
 

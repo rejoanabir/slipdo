@@ -3,6 +3,14 @@
 import React, { useState } from 'react';
 import { Receipt, Business } from '../lib/types';
 import { formatCurrency } from '../lib/format';
+import {
+  WhatsAppIcon,
+  PrinterIcon,
+  FileTextIcon,
+  XIcon,
+  CheckIcon,
+  ExternalLinkIcon,
+} from './Icons';
 
 interface ShareModalProps {
   receipt: Receipt;
@@ -32,11 +40,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       `*Payment Receipt - ${business.name}*\n\n` +
       `Dear ${receipt.customerName},\n` +
       `Thank you for your payment! Here is your official verified receipt:\n\n` +
-      `📄 *Receipt No:* #${receipt.receiptNo || receipt.id}\n` +
-      `💰 *Amount Paid:* ${formatCurrency(receipt.total, false)}\n` +
-      `💳 *Method:* ${receipt.paymentMethod} (${receipt.status || 'Paid'})\n` +
-      `📅 *Date:* ${receipt.date || 'Today'}\n\n` +
-      `🔗 *View & Download Verified Voucher:* \n${publicUrl}\n\n` +
+      `*Receipt No:* #${receipt.receiptNo || receipt.id}\n` +
+      `*Amount Paid:* ${formatCurrency(receipt.total, false)}\n` +
+      `*Method:* ${receipt.paymentMethod} (${receipt.status || 'Paid'})\n` +
+      `*Date:* ${receipt.date || 'Today'}\n\n` +
+      `*View & Download Verified Voucher:*\n${publicUrl}\n\n` +
       `If you have any questions, feel free to contact us at ${business.phone}.`
     );
   };
@@ -80,7 +88,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            ✕
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -93,10 +101,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             className="w-full py-3.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold text-sm flex items-center justify-between shadow-sm transition-all"
           >
             <span className="flex items-center gap-2.5">
-              <span>💬</span>
+              <WhatsAppIcon className="w-5 h-5 text-white" />
               <span>1-Click Send via WhatsApp (wa.me)</span>
             </span>
-            <span className="text-xs opacity-80">↗</span>
+            <ExternalLinkIcon className="w-4 h-4 opacity-80" />
           </a>
 
           {/* Public Link Copier */}
@@ -115,7 +123,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 onClick={handleCopy}
                 className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
-                <span>{copied ? '✓ Copied' : 'Copy'}</span>
+                {copied ? (
+                  <>
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <span>Copy</span>
+                )}
               </button>
             </div>
           </div>
@@ -127,7 +142,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               className="py-3 px-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition-all"
             >
               <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs mb-0.5">
-                <span>🖨️</span>
+                <PrinterIcon className="w-4 h-4 text-emerald-700" />
                 <span>Thermal POS Print</span>
               </div>
               <p className="text-[11px] text-slate-500">58mm / 80mm roll format</p>
@@ -138,7 +153,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               className="py-3 px-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition-all"
             >
               <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs mb-0.5">
-                <span>📄</span>
+                <FileTextIcon className="w-4 h-4 text-emerald-700" />
                 <span>A4 / PDF Print</span>
               </div>
               <p className="text-[11px] text-slate-500">Full invoice layout</p>
@@ -150,9 +165,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             href={`/r/${token}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
           >
-            <span>Preview Customer Verification Page (/r/[token]) ↗</span>
+            <span>Preview Customer Verification Page (/r/[token])</span>
+            <ExternalLinkIcon className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>

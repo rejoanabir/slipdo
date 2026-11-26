@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Business } from '../lib/types';
 import { SlipDoLogo } from './SlipDoLogo';
+import { GlobeIcon, UserIcon } from './Icons';
 
 interface NavbarProps {
   business: Business;
@@ -27,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { href: '/receipts', label: lang === 'bn' ? 'রশিদ সমূহ' : 'Vouchers' },
     { href: '/customers', label: lang === 'bn' ? 'গ্রাহক' : 'Customers' },
     { href: '/settings', label: lang === 'bn' ? 'সেটিংস' : 'Settings' },
-    { href: '/checklist', label: '🎨 Figma Checklist' },
+    { href: '/profile', label: lang === 'bn' ? 'প্রোফাইল' : 'Profile' },
   ];
 
   return (
@@ -59,7 +60,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span className="max-w-[150px] truncate">{business.name}</span>
-            <span className="text-slate-400 text-[10px]">▼</span>
+            <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
         </div>
 
@@ -91,8 +94,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors bg-white shadow-xs"
             title="Toggle English / বাংলা"
           >
-            <span>{lang === 'bn' ? '🇧🇩 বাংলা' : '🇬🇧 EN'}</span>
+            <GlobeIcon className="w-3.5 h-3.5 text-slate-500" />
+            <span>{lang === 'bn' ? 'বাংলা' : 'EN'}</span>
           </button>
+
+          {/* Profile Quick Link */}
+          <Link
+            href="/profile"
+            className={`p-2 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 transition-colors bg-white shadow-xs ${
+              pathname === '/profile' ? 'bg-slate-100 border-slate-400' : ''
+            }`}
+            title="Merchant Profile"
+          >
+            <UserIcon className="w-4 h-4 text-slate-700" />
+          </Link>
 
           {/* Quick Create CTA */}
           <Link

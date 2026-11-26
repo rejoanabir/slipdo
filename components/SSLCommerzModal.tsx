@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { XIcon } from './Icons';
 
 interface SSLCommerzModalProps {
   isOpen: boolean;
@@ -36,8 +37,8 @@ export const SSLCommerzModal: React.FC<SSLCommerzModalProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-display font-bold text-sm">SSLCommerz Secure Checkout</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
-            ✕
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
 

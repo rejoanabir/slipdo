@@ -10,6 +10,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { ShareModal } from '../../components/ShareModal';
 import { ReceiptPreview } from '../../components/ReceiptPreview';
+import { EyeIcon, ExternalLinkIcon, XIcon } from '../../components/Icons';
 
 export default function ReceiptsArchivePage() {
   const [mounted, setMounted] = useState(false);
@@ -152,15 +153,17 @@ export default function ReceiptsArchivePage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setPreviewReceipt(r)}
-                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
                         >
-                          👁 Preview
+                          <EyeIcon className="w-3.5 h-3.5" />
+                          <span>Preview</span>
                         </button>
                         <button
                           onClick={() => setShareReceipt(r)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
                         >
-                          Share ↗
+                          <span>Share</span>
+                          <ExternalLinkIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -205,9 +208,9 @@ export default function ReceiptsArchivePage() {
               </span>
               <button
                 onClick={() => setPreviewReceipt(null)}
-                className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs"
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center font-bold text-xs transition-colors"
               >
-                ✕
+                <XIcon className="w-3.5 h-3.5" />
               </button>
             </div>
             <ReceiptPreview receipt={previewReceipt} business={currentBiz} />

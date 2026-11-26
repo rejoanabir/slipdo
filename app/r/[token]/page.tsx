@@ -7,6 +7,7 @@ import { StorageService } from '../../../lib/storage';
 import { Receipt, Business } from '../../../lib/types';
 import { ReceiptPreview } from '../../../components/ReceiptPreview';
 import { QRCodeSVG } from '../../../components/QRCodeSVG';
+import { ShieldCheckIcon, LockIcon } from '../../../components/Icons';
 
 export default function PublicVerificationPage() {
   const params = useParams();
@@ -70,7 +71,8 @@ export default function PublicVerificationPage() {
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[10px] font-bold mb-1">
-                <span>✓ CRYPTOGRAPHICALLY VERIFIED</span>
+                <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-300" />
+                <span>CRYPTOGRAPHICALLY VERIFIED</span>
               </div>
               <h2 className="font-display font-bold text-base leading-tight">Authentic Digital Receipt</h2>
               <p className="font-mono text-[11px] text-emerald-200/90 mt-0.5">
@@ -100,7 +102,10 @@ export default function PublicVerificationPage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-400 space-y-1 print:hidden pt-4">
-          <p>🔒 Authenticity cryptographically signed by SlipDo SHA-256 token</p>
+          <p className="flex items-center justify-center gap-1.5">
+            <LockIcon className="w-3.5 h-3.5 text-slate-400" />
+            <span>Authenticity cryptographically signed by SlipDo SHA-256 token</span>
+          </p>
           <Link href="/" className="text-emerald-700 font-semibold hover:underline">
             SlipDo — Smart Digital Receipts for Bangladesh
           </Link>

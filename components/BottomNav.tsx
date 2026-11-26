@@ -3,6 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboardIcon,
+  ReceiptIcon,
+  PlusIcon,
+  UsersIcon,
+  UserIcon,
+} from './Icons';
 
 interface BottomNavProps {
   lang?: 'en' | 'bn';
@@ -15,28 +22,28 @@ export const BottomNav: React.FC<BottomNavProps> = ({ lang = 'en' }) => {
     {
       href: '/',
       label: lang === 'bn' ? 'ড্যাশবোর্ড' : 'Home',
-      icon: '📊',
+      icon: <LayoutDashboardIcon className="w-5 h-5" />,
     },
     {
       href: '/receipts',
       label: lang === 'bn' ? 'রশিদ' : 'Vouchers',
-      icon: '🧾',
+      icon: <ReceiptIcon className="w-5 h-5" />,
     },
     {
       href: '/new',
       label: lang === 'bn' ? 'নতুন' : 'Create',
-      icon: '+',
+      icon: <PlusIcon className="w-6 h-6 text-white" />,
       isPrimary: true,
     },
     {
       href: '/customers',
       label: lang === 'bn' ? 'গ্রাহক' : 'Customers',
-      icon: '👥',
+      icon: <UsersIcon className="w-5 h-5" />,
     },
     {
-      href: '/checklist',
-      label: 'Figma',
-      icon: '🎨',
+      href: '/profile',
+      label: lang === 'bn' ? 'প্রোফাইল' : 'Profile',
+      icon: <UserIcon className="w-5 h-5" />,
     },
   ];
 
@@ -53,7 +60,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ lang = 'en' }) => {
                 href={link.href}
                 className="relative -top-4 flex flex-col items-center group"
               >
-                <div className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center font-bold text-xl shadow-elevated group-active:scale-95 transition-all">
+                <div className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center font-bold shadow-elevated group-active:scale-95 transition-all">
                   {link.icon}
                 </div>
                 <span className="text-[10px] font-bold text-emerald-800 mt-0.5">{link.label}</span>
@@ -69,7 +76,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ lang = 'en' }) => {
                 isActive ? 'text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              <span className="text-base">{link.icon}</span>
+              <span className="flex items-center justify-center">{link.icon}</span>
               <span className="text-[10px] mt-0.5">{link.label}</span>
             </Link>
           );

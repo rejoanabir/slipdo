@@ -8,6 +8,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { SlipDoLogo } from '../../components/SlipDoLogo';
 import { SSLCommerzModal } from '../../components/SSLCommerzModal';
+import { CheckIcon } from '../../components/Icons';
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
@@ -64,7 +65,7 @@ export default function SettingsPage() {
       <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-5">
         {toast && (
           <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg animate-fade-in flex items-center gap-2">
-            <span>✓</span>
+            <CheckIcon className="w-4 h-4 text-emerald-400" />
             <span>{toast}</span>
           </div>
         )}
@@ -185,9 +186,18 @@ export default function SettingsPage() {
                 <span className="font-display font-extrabold text-base text-slate-900">৳০ / month</span>
               </div>
               <ul className="text-xs text-slate-600 space-y-1.5">
-                <li>✓ 30 receipts per month</li>
-                <li>✓ 1-Click WhatsApp sharing</li>
-                <li>✓ Standard voucher templates</li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>30 receipts per month</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>1-Click WhatsApp sharing</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Standard voucher templates</span>
+                </li>
               </ul>
             </div>
 
@@ -198,10 +208,22 @@ export default function SettingsPage() {
                 <span className="font-display font-extrabold text-base text-emerald-900">৳৪৯৯ / month</span>
               </div>
               <ul className="text-xs text-slate-700 space-y-1.5 font-medium">
-                <li>✓ <strong>Unlimited</strong> receipts</li>
-                <li>✓ All 5 Premium Templates</li>
-                <li>✓ Custom logo & no watermark</li>
-                <li>✓ 100 SMS notifications / mo</li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span><strong>Unlimited</strong> receipts</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>All 5 Premium Templates</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Custom logo & no watermark</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>100 SMS notifications / mo</span>
+                </li>
               </ul>
               <button
                 onClick={() => setIsSslModalOpen(true)}
@@ -232,7 +254,7 @@ export default function SettingsPage() {
         isOpen={isSslModalOpen}
         onClose={() => setIsSslModalOpen(false)}
         onSuccess={(gw) => {
-          showToast(`🎉 Upgraded to SlipDo Pro via ${gw}!`);
+          showToast(`Upgraded to SlipDo Pro via ${gw}!`);
         }}
       />
     </div>

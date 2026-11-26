@@ -10,6 +10,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { ReceiptPreview } from '../../components/ReceiptPreview';
 import { ShareModal } from '../../components/ShareModal';
+import { XIcon } from '../../components/Icons';
 
 export default function ReceiptCreatorPage() {
   const router = useRouter();
@@ -256,7 +257,7 @@ export default function ReceiptCreatorPage() {
                   disabled={items.length <= 1}
                   className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30"
                 >
-                  ✕
+                  <XIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
 

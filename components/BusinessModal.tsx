@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Business, Currency } from '../lib/types';
+import { XIcon } from './Icons';
 
 interface BusinessModalProps {
   business: Business;
@@ -64,9 +65,9 @@ export const BusinessModal: React.FC<BusinessModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-500 flex items-center justify-center font-bold text-sm"
+            className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-500 flex items-center justify-center font-bold text-sm transition-colors"
           >
-            ✕
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
 

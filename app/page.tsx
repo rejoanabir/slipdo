@@ -11,6 +11,7 @@ import { BusinessDrawer } from '../components/BusinessDrawer';
 import { ShareModal } from '../components/ShareModal';
 import { ReceiptPreview } from '../components/ReceiptPreview';
 import { SSLCommerzModal } from '../components/SSLCommerzModal';
+import { CheckIcon, ZapIcon, EyeIcon, ExternalLinkIcon, XIcon } from '../components/Icons';
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -101,7 +102,7 @@ export default function DashboardPage() {
         {/* Toast Notification */}
         {toastMessage && (
           <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg animate-fade-in flex items-center gap-2">
-            <span>✓</span>
+            <CheckIcon className="w-4 h-4 text-emerald-400" />
             <span>{toastMessage}</span>
           </div>
         )}
@@ -134,9 +135,10 @@ export default function DashboardPage() {
               </Link>
               <button
                 onClick={() => setIsSslModalOpen(true)}
-                className="px-4 py-3 rounded-2xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-semibold text-xs border border-emerald-500/50 transition-colors"
+                className="px-4 py-3 rounded-2xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-semibold text-xs border border-emerald-500/50 transition-colors inline-flex items-center gap-1.5"
               >
-                ⚡ Upgrade Pro
+                <ZapIcon className="w-3.5 h-3.5" />
+                <span>Upgrade Pro</span>
               </button>
             </div>
           </div>
@@ -265,15 +267,17 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setPreviewReceipt(r)}
-                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
                         >
-                          👁 Preview
+                          <EyeIcon className="w-3.5 h-3.5" />
+                          <span>Preview</span>
                         </button>
                         <button
                           onClick={() => setShareReceipt(r)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
                         >
-                          Share ↗
+                          <span>Share</span>
+                          <ExternalLinkIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -333,9 +337,9 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setPreviewReceipt(null)}
-                  className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs"
+                  className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center font-bold text-xs"
                 >
-                  ✕
+                  <XIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -349,7 +353,7 @@ export default function DashboardPage() {
         isOpen={isSslModalOpen}
         onClose={() => setIsSslModalOpen(false)}
         onSuccess={(gw) => {
-          showToast(`🎉 Upgraded to SlipDo Pro via ${gw} sandbox!`);
+          showToast(`Upgraded to SlipDo Pro via ${gw} sandbox!`);
         }}
       />
     </div>
