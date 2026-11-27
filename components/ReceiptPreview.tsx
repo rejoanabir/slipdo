@@ -28,7 +28,8 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const subtotal = items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
   const taxAmount = enableTax && taxRate > 0 ? (subtotal * taxRate) / 100 : 0;
   const discountAmount = enableDiscount && discount > 0 ? Math.min(discount, subtotal + taxAmount) : 0;
-  const total = Math.max(0, subtotal + taxAmount - discountAmount);
+  const deliveryAmount = Number(receipt.deliveryFee) || 0;
+  const total = Math.max(0, subtotal + taxAmount - discountAmount + deliveryAmount);
   const token = receipt.token || 'sd_9f8a2c4e';
 
   // Dynamic QR URL pointing to the live site origin
@@ -238,6 +239,12 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                 <span className="font-mono">-{formatCurrency(discountAmount, false)}</span>
               </div>
             )}
+            {deliveryAmount > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Delivery Charge:</span>
+                <span className="font-mono">+{formatCurrency(deliveryAmount, false)}</span>
+              </div>
+            )}
             <div
               className="flex justify-between font-bold text-base pt-2 border-t mt-1"
               style={{ color: primary, borderColor: `${primary}30` }}
@@ -308,6 +315,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                   {receipt.status || 'Paid'}
                 </span>
               </div>
+              {receipt.trxId && (
+                <p className="font-mono text-[10px] font-bold text-slate-500 uppercase mt-0.5">TrxID: {receipt.trxId}</p>
+              )}
             </div>
           </div>
 
@@ -366,6 +376,12 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                 <div className="flex justify-between text-emerald-700">
                   <span>Discount:</span>
                   <span className="font-mono">-{formatCurrency(discountAmount, false)}</span>
+                </div>
+              )}
+              {deliveryAmount > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>Delivery Charge:</span>
+                  <span className="font-mono">+{formatCurrency(deliveryAmount, false)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-base text-slate-900 pt-1.5 border-t border-slate-200">
@@ -441,6 +457,12 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
               <tr className="bg-slate-50">
                 <td colSpan={3} className="border border-slate-300 px-2 py-1 text-right text-emerald-700">ছাড় (ডিসকাউন্ট)</td>
                 <td className="border border-slate-300 px-2 py-1 text-right text-emerald-700">- {formatCurrency(discountAmount, true)}</td>
+              </tr>
+            )}
+            {deliveryAmount > 0 && (
+              <tr className="bg-slate-50">
+                <td colSpan={3} className="border border-slate-300 px-2 py-1 text-right text-slate-600">ডেলিভারি চার্জ</td>
+                <td className="border border-slate-300 px-2 py-1 text-right">+{formatCurrency(deliveryAmount, true)}</td>
               </tr>
             )}
             <tr className="bg-emerald-100 font-bold text-emerald-950">

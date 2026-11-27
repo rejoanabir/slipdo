@@ -84,13 +84,16 @@ export interface Receipt {
   date: string;
   customerName: string;
   customerPhone: string;
+  customerAddress?: string;
   paymentMethod: PaymentMethod;
+  trxId?: string;
   status: PaymentStatus;
   template: TemplateId;
   taxRate: number;
   enableTax?: boolean;
   discount: number;
   enableDiscount?: boolean;
+  deliveryFee?: number;
   items: ReceiptItem[];
   total: number;
   totals?: ReceiptTotals;

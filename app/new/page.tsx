@@ -42,6 +42,8 @@ export default function ReceiptCreatorPage() {
   const [enableDiscount, setEnableDiscount] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState('Thank you for shopping with us! Warranty valid with this verified receipt.');
+  const [trxId, setTrxId] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState(0);
 
   const [items, setItems] = useState<ReceiptItem[]>([
     { id: 1, desc: '', qty: 1, price: 0 },
@@ -94,7 +96,7 @@ export default function ReceiptCreatorPage() {
     currencySymbol: '৳',
   });
 
-  const totals = calcTotals(items, taxRate, enableTax, discount, enableDiscount);
+  const totals = calcTotals(items, taxRate, enableTax, discount, enableDiscount, deliveryFee);
 
   const handleItemChange = (idx: number, field: 'desc' | 'qty' | 'price', val: any) => {
     const updated = [...items];
@@ -167,6 +169,8 @@ export default function ReceiptCreatorPage() {
       enableTax,
       discount: enableDiscount ? discount : 0,
       enableDiscount,
+      deliveryFee: deliveryFee > 0 ? deliveryFee : undefined,
+      trxId: trxId.trim() || undefined,
       items,
       total: totals.total,
       notes,
@@ -199,6 +203,8 @@ export default function ReceiptCreatorPage() {
     enableTax,
     discount,
     enableDiscount,
+    deliveryFee: deliveryFee > 0 ? deliveryFee : undefined,
+    trxId: trxId.trim() || undefined,
     items,
     total: totals.total,
     notes,
@@ -420,10 +426,23 @@ export default function ReceiptCreatorPage() {
             className="w-24 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono disabled:opacity-40"
           />
         </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <span className="text-xs font-bold text-slate-700">Delivery Charge ({currentBiz.currencySymbol || '৳'})</span>
+          <input
+            type="number"
+            min="0"
+            value={deliveryFee || ''}
+            placeholder="0"
+            suppressHydrationWarning
+            onChange={(e) => setDeliveryFee(Number(e.target.value) || 0)}
+            className="w-24 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono"
+          />
+        </div>
       </div>
 
       {/* Payment Method Chips */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-soft space-y-2.5">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-soft space-y-3">
         <span className="block text-xs font-bold text-slate-700">Payment Method</span>
         <div className="flex flex-wrap gap-2">
           {[
@@ -448,6 +467,55 @@ export default function ReceiptCreatorPage() {
             );
           })}
         </div>
+
+        {/* Transaction ID for digital / mobile wallet payments */}
+        {['bKash', 'Nagad', 'Rocket', 'Bank'].includes(paymentMethod) && (
+          <div className="pt-1 animate-fade-in">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Transaction ID / TrxID (Optional)
+            </label>
+            <input
+              type="text"
+              value={trxId}
+              suppressHydrationWarning
+              placeholder="e.g. BKS9X84K2M"
+              onChange={(e) => setTrxId(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono uppercase focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Notes & Warranty Terms */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-soft space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-700">Remarks & Warranty Terms</span>
+          <span className="text-[10px] text-slate-400">Printed on receipt</span>
+        </div>
+        <textarea
+          rows={2}
+          value={notes}
+          suppressHydrationWarning
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Thank you for your business! Warranty terms..."
+          className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-blue-500 leading-relaxed"
+        />
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {[
+            '7-day replacement warranty.',
+            'Official service warranty applies.',
+            'Keep verified receipt for claim.',
+          ].map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => setNotes(notes ? `${notes} ${preset}` : preset)}
+              className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-[10px] font-semibold text-slate-600 transition-colors"
+            >
+              + {preset}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Issue Receipt CTA Button */}
@@ -456,7 +524,8 @@ export default function ReceiptCreatorPage() {
         onClick={handleSave}
         className="w-full py-4 px-5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-sm shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
       >
-        <span>Issue Verified Receipt · {formatCurrency(totals.total, false)}</span>
+        <span>Issue Verified Receipt</span>
+        <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-xs font-mono">{formatCurrency(totals.total, false)}</span>
       </button>
     </div>
   );

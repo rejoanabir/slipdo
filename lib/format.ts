@@ -49,17 +49,20 @@ export function calcTotals(
   taxRate = 0,
   enableTax = true,
   discount = 0,
-  enableDiscount = true
+  enableDiscount = true,
+  deliveryFee = 0
 ) {
   const subtotal = items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
   const taxAmount = enableTax && taxRate > 0 ? (subtotal * taxRate) / 100 : 0;
   const discountAmount = enableDiscount && discount > 0 ? Math.min(discount, subtotal + taxAmount) : 0;
-  const total = Math.max(0, subtotal + taxAmount - discountAmount);
+  const delivery = Number(deliveryFee) || 0;
+  const total = Math.max(0, subtotal + taxAmount - discountAmount + delivery);
 
   return {
     subtotal,
     taxAmount,
     discountAmount,
+    deliveryFee: delivery,
     total,
   };
 }
