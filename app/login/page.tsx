@@ -438,7 +438,7 @@ export default function LoginPage() {
                   placeholder="Enter your email"
                   className="w-full pl-5 pr-12 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
                 />
-                <div className="absolute right-4.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 p-1 flex items-center justify-center">
                   <MailIcon className="w-4 h-4 text-slate-400" />
                 </div>
               </div>

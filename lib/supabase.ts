@@ -45,20 +45,15 @@ const SUPABASE_URL =
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_CmqOCzZ1r0ZX9AtQzKH4nA_c_g0rEBx';
 
-const SUPABASE_SERVICE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_ws8Cj-jZ8670EjBts2mjNg_YA4WMS64';
-
 const SESSION_STORAGE_KEY = 'slipdo_supabase_session';
 
 export class SupabaseClient {
   public url: string;
   public anonKey: string;
-  private serviceKey: string;
 
-  constructor(url = SUPABASE_URL, anonKey = SUPABASE_ANON_KEY, serviceKey = SUPABASE_SERVICE_KEY) {
+  constructor(url = SUPABASE_URL, anonKey = SUPABASE_ANON_KEY) {
     this.url = url.replace(/\/+$/, '');
     this.anonKey = anonKey;
-    this.serviceKey = serviceKey;
   }
 
   // --- Auth APIs ---
@@ -73,8 +68,8 @@ export class SupabaseClient {
         try {
           const body: Record<string, any> = {
             email: params.email,
-            password: params.password || 'SlipDoMerchant2026!',
           };
+          if (params.password) body.password = params.password;
           if (params.phone) body.phone = params.phone;
           if (params.options?.data) body.data = params.options.data;
 
