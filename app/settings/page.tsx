@@ -1018,6 +1018,14 @@ export default function SettingsPage() {
           StorageService.setActiveBusiness(newBiz.id);
           showToast(`Storefront "${newBiz.name}" added!`);
         }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
+        }}
         lang={lang}
       />
 

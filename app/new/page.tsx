@@ -24,6 +24,12 @@ export default function ReceiptCreatorPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
   const [savedReceipt, setSavedReceipt] = useState<Receipt | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // Creator Tab on Mobile: 'edit' or 'preview'
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
@@ -76,8 +82,9 @@ export default function ReceiptCreatorPage() {
         if (cloudBiz && cloudBiz.length > 0) {
           StorageService.setCloudBusinesses(uid, cloudBiz);
           setBusinesses(cloudBiz);
-          setActiveBiz(cloudBiz[0]);
-          if (cloudBiz[0]?.customTemplate) {
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current || cloudBiz[0]);
+          if ((current || cloudBiz[0])?.customTemplate) {
             setTemplate('custom-template');
           }
         }
@@ -155,6 +162,20 @@ export default function ReceiptCreatorPage() {
   const formattedCustomerPhone = cleanNum ? `${codePrefix} ${cleanNum}` : (customerPhone || '+880 1711-000000');
 
   const handleSave = () => {
+    // Validate line items
+    const validItems = items.filter(
+      (it) => it.desc.trim() !== '' || (Number(it.price) > 0 && Number(it.qty) > 0)
+    );
+    if (validItems.length === 0) {
+      showToast('Please add at least one line item with a name or price', 'error');
+      return;
+    }
+
+    if (totals.total <= 0) {
+      showToast('Receipt total cannot be 0. Please specify item prices.', 'error');
+      return;
+    }
+
     const newReceipt: Receipt = {
       id: receiptNo,
       receiptNo,
@@ -358,9 +379,14 @@ export default function ReceiptCreatorPage() {
                   <input
                     type="number"
                     min="1"
-                    value={item.qty}
+                    placeholder="1"
+                    value={item.qty === 0 ? '' : item.qty}
+                    onFocus={(e) => e.target.select()}
                     suppressHydrationWarning
-                    onChange={(e) => handleItemChange(idx, 'qty', Number(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleItemChange(idx, 'qty', val === '' ? 0 : parseInt(val, 10) || 1);
+                    }}
                     className="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -370,9 +396,14 @@ export default function ReceiptCreatorPage() {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={item.price}
+                    placeholder="0.00"
+                    value={item.price === 0 ? '' : item.price}
+                    onFocus={(e) => e.target.select()}
                     suppressHydrationWarning
-                    onChange={(e) => handleItemChange(idx, 'price', Number(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleItemChange(idx, 'price', val === '' ? 0 : parseFloat(val) || 0);
+                    }}
                     className="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -522,7 +553,8 @@ export default function ReceiptCreatorPage() {
       <button
         type="button"
         onClick={handleSave}
-        className="w-full py-4 px-5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-sm shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+        disabled={totals.total <= 0}
+        className="w-full py-4 px-5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-display font-bold text-sm shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
       >
         <span>Issue Verified Receipt</span>
         <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-xs font-mono">{formatCurrency(totals.total, false)}</span>
@@ -554,7 +586,7 @@ export default function ReceiptCreatorPage() {
         </div>
       )}
 
-      <div id="printable-receipt-area" className={savedReceipt ? 'hidden' : ''}>
+      <div className="print:hidden">
         <ReceiptPreview
           receipt={currentDraftReceipt}
           business={currentBiz}
@@ -567,6 +599,23 @@ export default function ReceiptCreatorPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-10 font-sans">
+      {toast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full animate-fade-in shadow-2xl px-3">
+          <div
+            className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center gap-3 backdrop-blur-xl ${
+              toast.type === 'error'
+                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            }`}
+          >
+            <p className="flex-1 leading-snug">{toast.msg}</p>
+            <button type="button" onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-700 p-0.5">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <Navbar
         business={currentBiz}
         lang={lang}
@@ -623,6 +672,14 @@ export default function ReceiptCreatorPage() {
           setActiveBiz(newBiz);
           StorageService.saveBusiness(newBiz);
           StorageService.setActiveBusiness(newBiz.id);
+        }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
         }}
         lang={lang}
       />

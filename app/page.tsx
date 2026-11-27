@@ -90,7 +90,8 @@ export default function DashboardPage() {
           if (effectiveBusinesses.length > 0) {
             StorageService.setCloudBusinesses(uid, effectiveBusinesses);
             setBusinesses(effectiveBusinesses);
-            setActiveBiz(effectiveBusinesses[0]);
+            const active = StorageService.getActiveBusiness();
+            setActiveBiz(active || effectiveBusinesses[0]);
           }
           setReceipts(cloudReceipts || []);
         } catch (err) {
@@ -434,6 +435,14 @@ export default function DashboardPage() {
           StorageService.saveBusiness(newBiz);
           StorageService.setActiveBusiness(newBiz.id);
           showToast(`New branch "${newBiz.name}" created!`);
+        }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
         }}
         lang={lang}
       />

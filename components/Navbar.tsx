@@ -39,16 +39,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Link href="/" className="flex items-center gap-2.5 group">
             <SlipDoLogo size={36} lockup="official" className="group-hover:scale-105 transition-transform" />
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display font-extrabold text-lg tracking-tight text-slate-900 leading-none">
-                  SlipDo
-                </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60 tracking-wider">
-                  PRO
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium tracking-wide block">
-                Digital Receipts for BD
+              <span className="font-display font-extrabold text-lg tracking-tight text-slate-900 leading-none block">
+                SlipDo
               </span>
             </div>
           </Link>

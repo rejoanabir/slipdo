@@ -93,9 +93,10 @@ export default function LoginPage() {
 
     const handleAuthRedirect = async () => {
       try {
-        const isStep3Requested =
-          typeof window !== 'undefined' &&
-          new URLSearchParams(window.location.search).get('step') === '3';
+        const pendingVerify = typeof window !== 'undefined' ? sessionStorage.getItem('slipdo_pending_otp') : null;
+        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const isStep3Requested = urlParams?.get('step') === '3';
+        const isVerifyStep = urlParams?.get('step') === 'verify' || !!pendingVerify;
 
         const session = (await supabase.handleAuthCallback()) || supabase.getSession();
         if (session?.user?.id) {
@@ -136,6 +137,23 @@ export default function LoginPage() {
             setTimeout(() => {
               window.location.href = '/';
             }, 300);
+          }
+        } else if (isVerifyStep) {
+          let emailToVerify = urlParams?.get('email') || '';
+          let notice = '';
+          if (pendingVerify) {
+            try {
+              const parsed = JSON.parse(pendingVerify);
+              if (parsed.email) emailToVerify = parsed.email;
+              if (parsed.notice) notice = parsed.notice;
+            } catch {}
+          }
+          if (emailToVerify) {
+            setEmail(emailToVerify);
+            setAuthMode('otp_verify');
+            setVerificationNotice(notice || `Enter the 6-digit verification code sent to ${emailToVerify}`);
+            setTimeout(() => otpInputRefs.current[0]?.focus(), 200);
+            return;
           }
         } else if (isStep3Requested) {
           setAuthMode('step3_store');
@@ -321,9 +339,14 @@ export default function LoginPage() {
 
       // Email confirmation required:
       showToast('Account created! Enter the 6-digit verification code sent to your email.');
-      setVerificationNotice(`Enter the 6-digit verification code sent to ${cleanEmail}`);
+      const notice = `Enter the 6-digit verification code sent to ${cleanEmail}`;
+      setVerificationNotice(notice);
       setAuthMode('otp_verify');
       setResendCountdown(60);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('slipdo_pending_otp', JSON.stringify({ email: cleanEmail, notice }));
+        window.history.replaceState(null, '', `/login?step=verify&email=${encodeURIComponent(cleanEmail)}`);
+      }
       setTimeout(() => otpInputRefs.current[0]?.focus(), 150);
     } catch (err: any) {
       showToast(err?.message || 'Registration error occurred', 'error');
@@ -392,6 +415,7 @@ export default function LoginPage() {
       showToast('Identity confirmed! Please configure your storefront.');
       setAuthMode('step3_store');
       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('slipdo_pending_otp');
         window.history.replaceState(null, '', '/login?step=3');
       }
     } catch (err: any) {
@@ -542,13 +566,13 @@ export default function LoginPage() {
       StorageService.saveBusiness(newBusiness);
       StorageService.setActiveBusiness(newBusiness.id);
 
-      // 2. Save to Supabase cloud and user_metadata if session is present
+      // 2. Save to Supabase cloud and user_metadata in background without blocking UI
       const session = supabase.getSession();
       if (session?.user?.id) {
         const uid = session.user.id;
         StorageService.setCloudBusinesses(uid, [newBusiness]);
         StorageService.markStoreSetupCompleted(uid);
-        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.warn);
+        supabaseDb.saveBusiness(newBusiness, uid).catch(console.warn);
       }
 
       showToast('Storefront configured successfully! Welcome to SlipDo.');
@@ -853,6 +877,23 @@ export default function LoginPage() {
                   Resend Verification Code
                 </button>
               )}
+            </div>
+
+            {/* Back to Sign In Option */}
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('slipdo_pending_otp');
+                    window.history.replaceState(null, '', '/login');
+                  }
+                  setAuthMode('signin');
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800 font-semibold"
+              >
+                Back to Sign In
+              </button>
             </div>
           </div>
         )}

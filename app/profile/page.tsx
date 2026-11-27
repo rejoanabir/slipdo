@@ -44,6 +44,14 @@ export default function ProfilePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Storefront Editing State
+  const [isEditStoreModalOpen, setIsEditStoreModalOpen] = useState(false);
+  const [editStoreName, setEditStoreName] = useState('');
+  const [editStoreCategory, setEditStoreCategory] = useState('General Retail & Services');
+  const [editStoreAddress, setEditStoreAddress] = useState('');
+  const [editStorePhone, setEditStorePhone] = useState('');
+  const [editStoreBin, setEditStoreBin] = useState('');
+
   // User Profile form state
   const [merchantName, setMerchantName] = useState('Store Owner');
   const [merchantEmail, setMerchantEmail] = useState('');
@@ -168,6 +176,61 @@ export default function ProfilePage() {
       showToast('Store logo updated successfully!');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeBiz) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Signature file size must be under 2MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const updated = { ...activeBiz, signatureUrl: dataUrl };
+      setActiveBiz(updated);
+      StorageService.saveBusiness(updated);
+      const session = supabase.getSession();
+      if (session?.user?.id) {
+        supabaseDb.saveBusiness(updated, session.user.id).catch(console.error);
+      }
+      showToast('Digital signature updated successfully!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const openEditStoreModal = () => {
+    if (!activeBiz) return;
+    setEditStoreName(activeBiz.name);
+    setEditStoreCategory(activeBiz.category);
+    setEditStoreAddress(activeBiz.address);
+    setEditStorePhone(activeBiz.phone);
+    setEditStoreBin(activeBiz.bin || '');
+    setIsEditStoreModalOpen(true);
+  };
+
+  const handleSaveStorefront = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeBiz) return;
+    const updated: Business = {
+      ...activeBiz,
+      name: editStoreName.trim() || activeBiz.name,
+      category: editStoreCategory.trim() || activeBiz.category,
+      address: editStoreAddress.trim() || 'Online Store',
+      phone: editStorePhone.trim() || activeBiz.phone,
+      bin: editStoreBin.trim(),
+    };
+    setActiveBiz(updated);
+    StorageService.saveBusiness(updated);
+    const updatedList = businesses.map((b) => (b.id === updated.id ? updated : b));
+    setBusinesses(updatedList);
+    const session = supabase.getSession();
+    if (session?.user?.id) {
+      supabaseDb.saveBusiness(updated, session.user.id).catch(console.error);
+    }
+    setIsEditStoreModalOpen(false);
+    showToast('Storefront details updated successfully!');
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -297,19 +360,29 @@ export default function ProfilePage() {
 
         {/* Storefront Overview Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-soft space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <BuildingIcon className="w-5 h-5 text-blue-600" />
               <h3 className="font-display font-bold text-base text-slate-900">
                 {lang === 'bn' ? 'ব্যবসায়িক তথ্য ও প্রতিষ্ঠান' : 'Business & Storefront Profile'}
               </h3>
             </div>
-            <button
-              onClick={() => setIsStoreDrawerOpen(true)}
-              className="text-xs font-bold text-blue-700 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-full transition-colors border border-blue-200/60"
-            >
-              Switch Storefront
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openEditStoreModal}
+                className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-1.5 rounded-full transition-colors border border-slate-200"
+              >
+                Edit Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsStoreDrawerOpen(true)}
+                className="text-xs font-bold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100/80 px-3.5 py-1.5 rounded-full transition-colors border border-blue-200/60"
+              >
+                Switch Storefront
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -382,6 +455,36 @@ export default function ProfilePage() {
                     type="file"
                     accept="image/png,image/jpeg,image/svg+xml,image/webp"
                     onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Digital Signature Upload & Preview (Feature Added) */}
+            <div className="sm:col-span-2 pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 p-1">
+                  {activeBiz.signatureUrl ? (
+                    <img src={activeBiz.signatureUrl} alt="Digital signature" className="w-full h-full object-contain" />
+                  ) : (
+                    <ShieldCheckIcon className="w-6 h-6 text-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Digital Signature</h4>
+                  <p className="text-[11px] text-slate-400">
+                    {activeBiz.signatureUrl ? 'Signed and attached to all printed slips & PDFs' : 'No signature uploaded yet'}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="px-4 py-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200/60 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                  <span>{activeBiz.signatureUrl ? 'Change Signature' : 'Upload Signature'}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    onChange={handleSignatureUpload}
                     className="hidden"
                   />
                 </label>
@@ -611,6 +714,127 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Edit Storefront Details Modal */}
+      {isEditStoreModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <BuildingIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-base text-slate-900">
+                    Edit Storefront Details
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Update profile for {activeBiz.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditStoreModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStorefront} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  Store / Brand Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStoreName}
+                  onChange={(e) => setEditStoreName(e.target.value)}
+                  placeholder="e.g. Apex Retail, Velvet Studio"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={editStoreCategory}
+                    onChange={(e) => setEditStoreCategory(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="General Retail & Services">Retail & Services</option>
+                    <option value="Electronics & Gadgets">Electronics</option>
+                    <option value="Fashion & Apparel">Fashion & Apparel</option>
+                    <option value="Grocery & Supermart">Grocery & Mart</option>
+                    <option value="Pharmacy & Healthcare">Pharmacy</option>
+                    <option value="Restaurant & Cafe">Restaurant & Cafe</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                    BIN / VAT No.
+                  </label>
+                  <input
+                    type="text"
+                    value={editStoreBin}
+                    onChange={(e) => setEditStoreBin(e.target.value)}
+                    placeholder="000123456-0101"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-mono text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  value={editStorePhone}
+                  onChange={(e) => setEditStorePhone(e.target.value)}
+                  placeholder="+880 1711-223344"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 font-mono text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  Outlet Address (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editStoreAddress}
+                  onChange={(e) => setEditStoreAddress(e.target.value)}
+                  placeholder="e.g. Banani, Dhaka or Online Store"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditStoreModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all"
+                >
+                  Save Store Details
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <BottomNav lang={lang} />
 
       <BusinessDrawer
@@ -630,6 +854,14 @@ export default function ProfilePage() {
           StorageService.saveBusiness(newBiz);
           StorageService.setActiveBusiness(newBiz.id);
           showToast(`New branch "${newBiz.name}" created!`);
+        }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
         }}
         lang={lang}
       />

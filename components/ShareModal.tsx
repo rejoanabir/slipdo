@@ -29,6 +29,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   lang = 'en',
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -69,21 +70,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   const handleThermalPrint = () => {
+    if (isPrinting) return;
+    setIsPrinting(true);
     const prevTitle = document.title;
     document.title = `SlipDo_Receipt_${receipt.receiptNo || receipt.id}`;
     window.print();
     setTimeout(() => {
       document.title = prevTitle;
-    }, 1000);
+      setIsPrinting(false);
+    }, 1200);
   };
 
   const handleA4Print = () => {
+    if (isPrinting) return;
+    setIsPrinting(true);
     const prevTitle = document.title;
     document.title = `SlipDo_Invoice_${receipt.receiptNo || receipt.id}`;
     window.print();
     setTimeout(() => {
       document.title = prevTitle;
-    }, 1000);
+      setIsPrinting(false);
+    }, 1200);
   };
 
   return (

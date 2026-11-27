@@ -258,8 +258,8 @@ export default function CustomersPage() {
 
       {/* Customer Activity History Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
-          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh] animate-scale-up">
             {/* Header */}
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-3">
@@ -273,7 +273,7 @@ export default function CustomersPage() {
               </div>
               <button
                 onClick={() => setSelectedCustomer(null)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -332,7 +332,7 @@ export default function CustomersPage() {
             <div className="p-3 border-t border-slate-100 bg-slate-50 text-right">
               <button
                 onClick={() => setSelectedCustomer(null)}
-                className="px-4 py-2 rounded-full bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-700 transition-colors"
+                className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
               >
                 Close
               </button>
@@ -343,13 +343,13 @@ export default function CustomersPage() {
 
       {/* Preview Modal for Customer Receipt */}
       {previewReceipt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl relative space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto thin-scroll p-4 sm:p-6 shadow-2xl relative space-y-4 animate-scale-up">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <span className="font-display font-bold text-sm text-slate-900">Digital Receipt Preview</span>
               <button
                 onClick={() => setPreviewReceipt(null)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -363,7 +363,7 @@ export default function CustomersPage() {
 
       {/* Add Customer Modal with Country Code */}
       {isAddCustomerOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -464,6 +464,14 @@ export default function CustomersPage() {
           StorageService.saveBusiness(newBiz);
           StorageService.setActiveBusiness(newBiz.id);
           showToast(`Storefront "${newBiz.name}" added!`);
+        }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
         }}
         lang={lang}
       />

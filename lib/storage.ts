@@ -94,7 +94,26 @@ export class StorageService {
     localStorage.setItem(key, JSON.stringify(businesses));
     if (businesses.length > 0) {
       const activeKey = `slipdo_${userId}_active_biz`;
-      localStorage.setItem(activeKey, businesses[0].id);
+      const currentActive = localStorage.getItem(activeKey);
+      if (!currentActive || !businesses.some((b) => b.id === currentActive)) {
+        localStorage.setItem(activeKey, businesses[0].id);
+      }
+    }
+  }
+
+  static deleteBusiness(bizId: string): void {
+    const list = this.getBusinesses().filter((b) => b.id !== bizId);
+    if (this.isClient()) {
+      localStorage.setItem(this.getUserKey('businesses'), JSON.stringify(list));
+      const activeKey = this.getUserKey('active_biz');
+      const currentActive = localStorage.getItem(activeKey);
+      if (currentActive === bizId) {
+        if (list.length > 0) {
+          localStorage.setItem(activeKey, list[0].id);
+        } else {
+          localStorage.removeItem(activeKey);
+        }
+      }
     }
   }
 

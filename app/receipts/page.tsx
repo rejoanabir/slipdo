@@ -36,6 +36,7 @@ export default function ReceiptsArchivePage() {
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
   const [shareReceipt, setShareReceipt] = useState<Receipt | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<Receipt | null>(null);
+  const [receiptToDelete, setReceiptToDelete] = useState<Receipt | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,16 +96,21 @@ export default function ReceiptsArchivePage() {
     }
   };
 
-  const handleDelete = async (receipt: Receipt) => {
-    if (typeof window !== 'undefined' && !window.confirm(`Delete voucher #${receipt.receiptNo || receipt.id}?`)) {
-      return;
-    }
-    const updated = StorageService.deleteReceipt(receipt.id);
+  const handleDelete = (receipt: Receipt) => {
+    setReceiptToDelete(receipt);
+  };
+
+  const confirmDeleteReceipt = async () => {
+    if (!receiptToDelete) return;
+    const rId = receiptToDelete.id;
+    const rNo = receiptToDelete.receiptNo || rId;
+    const updated = StorageService.deleteReceipt(rId);
     setReceipts(updated);
-    showToast(`Voucher #${receipt.receiptNo || receipt.id} removed`);
+    setReceiptToDelete(null);
+    showToast(`Voucher #${rNo} removed`);
 
     try {
-      await supabaseDb.deleteReceipt(receipt.id);
+      await supabaseDb.deleteReceipt(rId);
     } catch (err) {
       console.error('Failed to delete from Supabase:', err);
     }
@@ -399,8 +405,62 @@ export default function ReceiptsArchivePage() {
           StorageService.setActiveBusiness(newBiz.id);
           showToast(`Storefront "${newBiz.name}" created!`);
         }}
+        onDeleteBusiness={(bizId) => {
+          StorageService.deleteBusiness(bizId);
+          const remaining = StorageService.getBusinesses();
+          setBusinesses(remaining);
+          const current = StorageService.getActiveBusiness();
+          setActiveBiz(current);
+          showToast('Store outlet removed');
+        }}
         lang={lang}
       />
+
+      {/* Delete Confirmation Modal */}
+      {receiptToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in font-sans">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                <Trash2Icon className="w-5 h-5" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setReceiptToDelete(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="font-display font-bold text-base text-slate-900">
+                Delete Voucher #{receiptToDelete.receiptNo || receiptToDelete.id}?
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                This will remove the voucher record permanently from your dashboard and cloud database.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setReceiptToDelete(null)}
+                className="flex-1 py-2.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteReceipt}
+                className="flex-1 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 transition-all"
+              >
+                Delete Voucher
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {shareReceipt && (
         <ShareModal
