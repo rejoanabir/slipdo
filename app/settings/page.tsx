@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { StorageService } from '../../lib/storage';
 import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business, LogoLockup, Currency } from '../../lib/types';
@@ -12,7 +13,9 @@ import { SSLCommerzModal } from '../../components/SSLCommerzModal';
 import { CheckIcon, BuildingIcon, PrinterIcon, CreditCardIcon, ExternalLinkIcon, ShieldCheckIcon } from '../../components/Icons';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [lang, setLang] = useState<'en' | 'bn'>('en');
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
@@ -34,6 +37,14 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
+    const session = supabase.getSession();
+    const authUser = StorageService.getAuthUser();
+    if (!session && !authUser) {
+      router.replace('/login');
+      return;
+    }
+
+    setIsAuthenticated(true);
     const bList = StorageService.getBusinesses();
     const active = StorageService.getActiveBusiness();
     setBusinesses(bList);
@@ -117,8 +128,12 @@ export default function SettingsPage() {
     currencySymbol: '৳',
   });
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  if (!mounted || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (

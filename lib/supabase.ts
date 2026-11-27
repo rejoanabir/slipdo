@@ -162,23 +162,60 @@ export class SupabaseClient {
         }
       },
 
-      signInWithOtp: async (params: { email?: string; phone?: string }): Promise<{ error: any }> => {
+      signInWithOtp: async (params: {
+        email?: string;
+        phone?: string;
+        options?: { emailRedirectTo?: string; data?: Record<string, any> };
+      }): Promise<{ error: any }> => {
         try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
+          const redirectTo = params.options?.emailRedirectTo || `${origin}/login`;
+          const body: Record<string, any> = {
+            create_user: true,
+          };
+          if (params.email) {
+            body.email = params.email;
+            body.email_redirect_to = redirectTo;
+          }
+          if (params.phone) {
+            body.phone = params.phone;
+          }
+          if (params.options?.data) {
+            body.data = params.options.data;
+          }
+
           const res = await fetch(`${this.url}/auth/v1/otp`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               apikey: this.anonKey,
             },
-            body: JSON.stringify(params),
+            body: JSON.stringify(body),
           });
           const data = await res.json();
           if (!res.ok) {
-            return { error: { message: data.msg || data.message || 'Failed to send OTP' } };
+            return { error: { message: data.msg || data.message || 'Failed to send verification link/code' } };
           }
           return { error: null };
         } catch (err: any) {
           return { error: { message: err?.message || 'Network error' } };
+        }
+      },
+
+      signInWithOAuth: async (params: {
+        provider: string;
+        options?: { redirectTo?: string; queryParams?: Record<string, string> };
+      }): Promise<{ data: { url: string } | null; error: any }> => {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
+          const redirectTo = params.options?.redirectTo || `${origin}/login`;
+          const url = `${this.url}/auth/v1/authorize?provider=${encodeURIComponent(params.provider)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+          if (typeof window !== 'undefined') {
+            window.location.href = url;
+          }
+          return { data: { url }, error: null };
+        } catch (err: any) {
+          return { data: null, error: { message: err?.message || 'OAuth initialization failed' } };
         }
       },
 
@@ -221,6 +258,24 @@ export class SupabaseClient {
           };
 
           this.setSession(session);
+          if (typeof window !== 'undefined' && data.user) {
+            try {
+              localStorage.setItem(
+                'slipdo_auth_user_v3',
+                JSON.stringify({
+                  id: data.user.id,
+                  email: data.user.email || '',
+                  name:
+                    data.user.user_metadata?.full_name ||
+                    data.user.user_metadata?.name ||
+                    data.user.email?.split('@')[0] ||
+                    'Store Owner',
+                  phone: data.user.phone || '',
+                  role: 'Store Owner',
+                })
+              );
+            } catch {}
+          }
           return { data: { user: data.user, session }, error: null };
         } catch (err: any) {
           return {
@@ -290,6 +345,121 @@ export class SupabaseClient {
     try {
       localStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {}
+  }
+
+  async handleAuthCallback(): Promise<SupabaseSession | null> {
+    if (typeof window === 'undefined') return null;
+
+    // 1. Check hash fragment (#access_token=... or #error=...)
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const error_desc = params.get('error_description') || params.get('error');
+      if (error_desc) {
+        console.warn('Auth callback error from hash:', error_desc);
+        return null;
+      }
+
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+      const expires_in = parseInt(params.get('expires_in') || '3600', 10);
+      const token_type = params.get('token_type') || 'bearer';
+
+      if (access_token) {
+        try {
+          const userRes = await fetch(`${this.url}/auth/v1/user`, {
+            headers: {
+              apikey: this.anonKey,
+              Authorization: `Bearer ${access_token}`,
+            },
+          });
+          const user = await userRes.json();
+          const session: SupabaseSession = {
+            access_token,
+            token_type,
+            expires_in,
+            expires_at: Math.floor(Date.now() / 1000) + expires_in,
+            refresh_token: refresh_token || '',
+            user,
+          };
+          this.setSession(session);
+          try {
+            const authUserData = {
+              id: user.id,
+              email: user.email || '',
+              name:
+                user.user_metadata?.full_name ||
+                user.user_metadata?.name ||
+                user.email?.split('@')[0] ||
+                'Store Owner',
+              phone: user.phone || user.user_metadata?.phone || '',
+              role: 'Store Owner',
+            };
+            localStorage.setItem('slipdo_auth_user_v3', JSON.stringify(authUserData));
+            localStorage.setItem(
+              'slipdo_auth_session',
+              JSON.stringify({ token: access_token, user: authUserData })
+            );
+          } catch {}
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          return session;
+        } catch (err) {
+          console.error('Failed to parse auth token:', err);
+        }
+      }
+    }
+
+    // 2. Check query params (?code=... or ?error=...)
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    if (code) {
+      try {
+        const res = await fetch(`${this.url}/auth/v1/token?grant_type=pkce`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: this.anonKey,
+          },
+          body: JSON.stringify({ auth_code: code }),
+        });
+        const data = await res.json();
+        if (res.ok && data.access_token) {
+          const session: SupabaseSession = {
+            access_token: data.access_token,
+            token_type: data.token_type || 'bearer',
+            expires_in: data.expires_in,
+            expires_at: Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+            refresh_token: data.refresh_token || '',
+            user: data.user,
+          };
+          this.setSession(session);
+          try {
+            const authUserData = {
+              id: data.user.id,
+              email: data.user.email || '',
+              name:
+                data.user.user_metadata?.full_name ||
+                data.user.user_metadata?.name ||
+                data.user.email?.split('@')[0] ||
+                'Store Owner',
+              phone: data.user.phone || data.user.user_metadata?.phone || '',
+              role: 'Store Owner',
+            };
+            localStorage.setItem('slipdo_auth_user_v3', JSON.stringify(authUserData));
+            localStorage.setItem(
+              'slipdo_auth_session',
+              JSON.stringify({ token: data.access_token, user: authUserData })
+            );
+          } catch {}
+          window.history.replaceState(null, '', window.location.pathname);
+          return session;
+        }
+      } catch (err) {
+        console.error('Failed to exchange code:', err);
+      }
+    }
+
+    return null;
   }
 
   // --- PostgREST Query Helper ---

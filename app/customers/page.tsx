@@ -16,6 +16,7 @@ import { UsersIcon, XIcon, ReceiptIcon, EyeIcon, PrinterIcon, PlusIcon, CheckIco
 export default function CustomersPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [lang, setLang] = useState<'en' | 'bn'>('en');
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
@@ -67,13 +68,20 @@ export default function CustomersPage() {
 
   useEffect(() => {
     setMounted(true);
+    const session = supabase.getSession();
+    const authUser = StorageService.getAuthUser();
+    if (!session && !authUser) {
+      router.replace('/login');
+      return;
+    }
+
+    setIsAuthenticated(true);
     setBusinesses(StorageService.getBusinesses());
     setActiveBiz(StorageService.getActiveBusiness());
     setCustomers(StorageService.getCustomers());
     setReceipts(StorageService.getReceipts());
 
     // Sync with Supabase cloud
-    const session = supabase.getSession();
     if (session?.user?.id) {
       Promise.all([
         supabaseDb.getCustomers(session.user.id),
@@ -116,8 +124,12 @@ export default function CustomersPage() {
       )
     : [];
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  if (!mounted || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { StorageService } from '../lib/storage';
 import { supabase, supabaseDb } from '../lib/supabase';
 import { Business, Receipt, PaymentMethod } from '../lib/types';
@@ -15,7 +16,9 @@ import { SSLCommerzModal } from '../components/SSLCommerzModal';
 import { CheckIcon, ZapIcon, EyeIcon, ExternalLinkIcon, XIcon, ReceiptIcon } from '../components/Icons';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [lang, setLang] = useState<'en' | 'bn'>('en');
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
@@ -32,30 +35,46 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
-    const bList = StorageService.getBusinesses();
-    const active = StorageService.getActiveBusiness();
-    const rList = StorageService.getReceipts();
-    setBusinesses(bList);
-    setActiveBiz(active);
-    setReceipts(rList);
 
-    // Sync with Supabase cloud if merchant session is active
-    const session = supabase.getSession();
-    if (session?.user?.id) {
-      Promise.all([
-        supabaseDb.getReceipts(session.user.id),
-        supabaseDb.getBusinesses(session.user.id),
-      ]).then(([cloudReceipts, cloudBusinesses]) => {
-        if (cloudReceipts && cloudReceipts.length > 0) {
-          setReceipts(cloudReceipts);
-        }
-        if (cloudBusinesses && cloudBusinesses.length > 0) {
-          setBusinesses(cloudBusinesses);
-          setActiveBiz(cloudBusinesses[0]);
-        }
-      }).catch(console.error);
-    }
-  }, []);
+    const initAuthAndData = async () => {
+      // 1. Check for incoming OAuth or Magic link redirect hash
+      const oauthSession = await supabase.handleAuthCallback();
+      const session = oauthSession || supabase.getSession();
+      const authUser = StorageService.getAuthUser();
+
+      // Guard: strictly redirect unauthenticated visitors to login
+      if (!session && !authUser) {
+        router.replace('/login');
+        return;
+      }
+
+      setIsAuthenticated(true);
+      const bList = StorageService.getBusinesses();
+      const active = StorageService.getActiveBusiness();
+      const rList = StorageService.getReceipts();
+      setBusinesses(bList);
+      setActiveBiz(active);
+      setReceipts(rList);
+
+      // Sync with Supabase cloud if merchant session is active
+      if (session?.user?.id) {
+        Promise.all([
+          supabaseDb.getReceipts(session.user.id),
+          supabaseDb.getBusinesses(session.user.id),
+        ]).then(([cloudReceipts, cloudBusinesses]) => {
+          if (cloudReceipts && cloudReceipts.length > 0) {
+            setReceipts(cloudReceipts);
+          }
+          if (cloudBusinesses && cloudBusinesses.length > 0) {
+            setBusinesses(cloudBusinesses);
+            setActiveBiz(cloudBusinesses[0]);
+          }
+        }).catch(console.error);
+      }
+    };
+
+    initAuthAndData();
+  }, [router]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -118,8 +137,13 @@ export default function DashboardPage() {
     }
   };
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  if (!mounted || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-xs font-semibold text-slate-500">Checking merchant session...</span>
+      </div>
+    );
   }
 
   return (

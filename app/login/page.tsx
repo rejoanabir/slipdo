@@ -15,10 +15,9 @@ import {
   BadgeCheckIcon,
   ChevronRightIcon,
   WhatsAppIcon,
-  ReceiptIcon,
-  GlobeIcon,
   XIcon,
-  EyeIcon,
+  GoogleIcon,
+  MailIcon,
 } from '../../components/Icons';
 
 export default function LoginPage() {
@@ -33,16 +32,14 @@ export default function LoginPage() {
   const [existingUser, setExistingUser] = useState<any>(null);
 
   // --- Step 1: Identity ---
-  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
-  const [phone, setPhone] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [phone, setPhone] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(true);
 
-  // --- Step 2: Verification (OTP) ---
+  // --- Step 2: Verification (OTP & Magic Link) ---
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [resendCountdown, setResendCountdown] = useState(45);
+  const [resendCountdown, setResendCountdown] = useState(60);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // --- Step 3: Storefront Onboarding ---
@@ -62,21 +59,47 @@ export default function LoginPage() {
     { id: 'General Retail & Wholesale Services', label: 'General Trade', sub: 'Wholesale & Services' },
   ];
 
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   useEffect(() => {
     setMounted(true);
 
-    // Check if user is already logged in
-    const cachedUser = StorageService.getAuthUser();
-    const session = supabase.auth.getSession();
-    if (cachedUser || session) {
-      setExistingUser(cachedUser || session?.user);
-    }
+    const checkIncomingAuth = async () => {
+      // 1. Process potential Magic Link or OAuth callback
+      try {
+        const session = await supabase.handleAuthCallback();
+        if (session?.user) {
+          showToast('Signed in successfully via email verification link!');
+          const businesses = StorageService.getBusinesses();
+          if (businesses && businesses.length > 0) {
+            setTimeout(() => router.replace('/'), 500);
+          } else {
+            setCurrentStep(3);
+          }
+          return;
+        }
+      } catch (err) {
+        console.error('Error handling auth callback:', err);
+      }
 
-    // Health check Supabase connection
+      // 2. Check if already logged in
+      const cachedUser = StorageService.getAuthUser();
+      const currentSession = supabase.getSession();
+      if (cachedUser || currentSession) {
+        setExistingUser(cachedUser || currentSession?.user);
+      }
+    };
+
+    checkIncomingAuth();
+
+    // Supabase cloud connectivity test
     supabase.testConnection().then((res) => {
       setSupabaseConnected(res.ok);
     });
-  }, []);
+  }, [router]);
 
   // OTP Countdown timer
   useEffect(() => {
@@ -86,11 +109,6 @@ export default function LoginPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [currentStep, resendCountdown]);
-
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   // Bangladesh Operator detection hint
   const getOperatorName = (rawPhone: string) => {
@@ -104,7 +122,36 @@ export default function LoginPage() {
     return null;
   };
 
-  // --- Step 1 Submit: Request OTP / Proceed ---
+  // --- Google OAuth Handler ---
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
+      const preflight = await fetch(
+        `${supabase.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(origin + '/login')}`
+      );
+
+      if (!preflight.ok) {
+        const errData = await preflight.json().catch(() => ({}));
+        showToast(
+          errData.msg || 'Google OAuth is pending client credentials in Supabase Dashboard. Please use Email (Link & Code).',
+          'error'
+        );
+        setLoading(false);
+        return;
+      }
+
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${origin}/login` },
+      });
+    } catch {
+      showToast('Google Sign-In is unavailable. Please sign in with Email below.', 'error');
+      setLoading(false);
+    }
+  };
+
+  // --- Step 1 Submit: Request OTP & Magic Link ---
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!termsAccepted) {
@@ -112,19 +159,15 @@ export default function LoginPage() {
       return;
     }
 
-    if (loginMethod === 'phone') {
-      const clean = phone.replace(/\D/g, '');
-      if (clean.length < 10) {
-        showToast('Please enter a valid 11-digit Bangladesh phone number', 'error');
-        return;
-      }
-    } else {
+    if (loginMethod === 'email') {
       if (!email || !email.includes('@')) {
         showToast('Please enter a valid email address', 'error');
         return;
       }
-      if (!password || password.length < 6) {
-        showToast('Password must be at least 6 characters', 'error');
+    } else {
+      const clean = phone.replace(/\D/g, '');
+      if (clean.length < 10) {
+        showToast('Please enter a valid 11-digit Bangladesh phone number', 'error');
         return;
       }
     }
@@ -133,14 +176,31 @@ export default function LoginPage() {
 
     try {
       if (loginMethod === 'email') {
-        await supabase.auth.signInWithOtp({ email }).catch(() => {});
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
+        const res = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: {
+            emailRedirectTo: `${origin}/login`,
+          },
+        });
+
+        if (res.error) {
+          showToast(res.error.message || 'Failed to dispatch verification email', 'error');
+          setLoading(false);
+          return;
+        }
+
+        showToast('Direct Login Link and 6-digit Code sent to your email!');
+        setCurrentStep(2);
+        setResendCountdown(60);
+      } else {
+        showToast('Verification code dispatched via SMS & WhatsApp');
+        setCurrentStep(2);
+        setResendCountdown(45);
+        setOtp(['1', '2', '3', '4', '5', '6']);
       }
-      showToast('Verification code dispatched via SMS & WhatsApp');
-      setCurrentStep(2);
-      setResendCountdown(45);
-      // Pre-fill demo OTP for convenient evaluation
-      setOtp(['1', '2', '3', '4', '5', '6']);
     } catch {
+      showToast('Offline fallback: verify with demo code 123456');
       setCurrentStep(2);
     } finally {
       setLoading(false);
@@ -158,11 +218,89 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      if (loginMethod === 'email') {
+        const cleanEmail = email.trim().toLowerCase();
+        const res = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: code,
+          type: 'email',
+        });
+
+        if (res.error) {
+          // Allow demo sandbox code 123456
+          if (code === '123456') {
+            const authUser = {
+              id: 'usr_demo_' + Date.now().toString(36),
+              email: cleanEmail,
+              name: cleanEmail.split('@')[0],
+              role: 'Store Owner',
+            };
+            StorageService.setAuthUser(authUser);
+            showToast('Identity verified via demo code');
+            finishAuthentication();
+            return;
+          }
+
+          showToast(res.error.message || 'Invalid 6-digit code. Please check your email or click the link.', 'error');
+          setLoading(false);
+          return;
+        }
+
+        showToast('Identity verified cryptographically');
+        finishAuthentication();
+      } else {
+        // Mobile verification
+        const authUser = {
+          id: 'usr_phone_' + Date.now().toString(36),
+          phone,
+          email: `phone_${phone.replace(/\D/g, '')}@slipdo.app`,
+          name: 'Store Owner',
+          role: 'Store Owner',
+        };
+        StorageService.setAuthUser(authUser);
+        showToast('Identity verified via mobile code');
+        finishAuthentication();
+      }
+    } catch (err: any) {
+      showToast('Verification error. Please retry or click the email link.', 'error');
+    } finally {
       setLoading(false);
-      showToast('Identity verified cryptographically');
+    }
+  };
+
+  const finishAuthentication = () => {
+    const businesses = StorageService.getBusinesses();
+    if (businesses && businesses.length > 0) {
+      setTimeout(() => {
+        router.push('/');
+      }, 500);
+    } else {
       setCurrentStep(3);
-    }, 500);
+    }
+  };
+
+  // --- Resend Link & Code Handler ---
+  const handleResend = async () => {
+    if (resendCountdown > 0) return;
+    setLoading(true);
+    try {
+      if (loginMethod === 'email') {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
+        await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { emailRedirectTo: `${origin}/login` },
+        });
+        showToast('New login link & 6-digit code sent to your email!');
+      } else {
+        showToast('New SMS verification code dispatched!');
+      }
+      setResendCountdown(60);
+    } catch {
+      showToast('Error resending verification. Try again in a moment.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // OTP inputs handling
@@ -208,7 +346,6 @@ export default function LoginPage() {
         category,
         phone: loginMethod === 'phone' ? phone : '+880 1700-000000',
         email: loginMethod === 'email' ? email : `merchant_${phone.replace(/\D/g, '')}@slipdo.app`,
-        password: password || 'SlipDoMerchant2026!',
       };
 
       // 1. Call Next.js server route to register/authenticate on Supabase
@@ -218,9 +355,9 @@ export default function LoginPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (data.session) {
+      if (data?.session) {
         supabase.setSession(data.session);
       }
 
@@ -251,7 +388,7 @@ export default function LoginPage() {
       setTimeout(() => {
         router.push('/');
       }, 700);
-    } catch (err: any) {
+    } catch {
       showToast('Storefront launched in local offline mode');
       setTimeout(() => {
         router.push('/');
@@ -263,10 +400,9 @@ export default function LoginPage() {
 
   // Fast Demo Sandbox Auto-fill
   const handleQuickDemo = () => {
-    setLoginMethod('phone');
-    setPhone('01711223344');
+    setLoginMethod('email');
     setEmail('merchant.nextech@gmail.com');
-    setPassword('SlipDoMerchant2026!');
+    setPhone('01711223344');
     setMerchantName('Arif Rahman');
     setBusinessName('NexTech Gadgets BD');
     setCategory('Consumer Electronics & Accessories');
@@ -422,7 +558,7 @@ export default function LoginPage() {
 
         {/* ================= STEP 1: IDENTITY & MERCHANT CONTACT ================= */}
         {currentStep === 1 && (
-          <form onSubmit={handleStep1Submit} className="space-y-5 animate-fade-in">
+          <div className="space-y-5 animate-fade-in">
             <div>
               <h2 className="font-display font-extrabold text-xl text-slate-900 tracking-tight">
                 Merchant Sign In / Register
@@ -432,182 +568,218 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Switch: Mobile vs Email */}
+            {/* Google OAuth Button */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full py-3 px-4 rounded-2xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold flex items-center justify-center gap-3 transition-all shadow-xs hover:border-slate-300 active:scale-[0.99] disabled:opacity-50"
+            >
+              <GoogleIcon className="w-5 h-5 shrink-0" />
+              <span>Continue with Google</span>
+            </button>
+
+            {/* Divider */}
+            <div className="relative flex items-center py-1">
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink mx-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Or sign in with email / mobile
+              </span>
+              <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            {/* Switch: Email vs Mobile */}
             <div className="flex p-1 rounded-2xl bg-slate-100 text-xs font-bold text-slate-600 border border-slate-200/60">
               <button
                 type="button"
-                onClick={() => setLoginMethod('phone')}
-                className={`flex-1 py-2.5 rounded-xl transition-all ${
-                  loginMethod === 'phone'
-                    ? 'bg-white text-emerald-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Mobile (+880 BD)
-              </button>
-              <button
-                type="button"
                 onClick={() => setLoginMethod('email')}
-                className={`flex-1 py-2.5 rounded-xl transition-all ${
+                className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
                   loginMethod === 'email'
                     ? 'bg-white text-emerald-800 shadow-sm'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                Business Email
+                <MailIcon className="w-4 h-4" />
+                <span>Email (Link & Code)</span>
               </button>
-            </div>
-
-            {/* Mobile Input with Bangladesh Flag & Operator Detection */}
-            {loginMethod === 'phone' ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Bangladesh Mobile Number
-                  </label>
-                  {detectedOperator && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      {detectedOperator}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-slate-50 focus-within:border-emerald-600 focus-within:bg-white overflow-hidden transition-all shadow-xs">
-                  <span className="px-3.5 py-3 text-xs font-bold text-slate-700 border-r border-slate-200 bg-slate-100/80 flex items-center gap-1.5 shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span>+880</span>
-                  </span>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="01711 - 223344"
-                    className="flex-1 px-3.5 py-3 text-sm font-mono font-semibold text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400"
-                  />
-                  {phone && (
-                    <button
-                      type="button"
-                      onClick={() => setPhone('')}
-                      className="p-2 mr-1 text-slate-400 hover:text-slate-600 rounded-lg"
-                    >
-                      <XIcon className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Enter your 11-digit mobile (e.g. 017, 018, 019, 016, 013, 014, 015).
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Business Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="merchant@yourstore.com"
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-600 bg-slate-50 focus:bg-white transition-all shadow-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Password / Master PIN
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-600 bg-slate-50 focus:bg-white transition-all shadow-xs pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 1-Click Sandbox Test helper */}
-            <div className="pt-1">
               <button
                 type="button"
-                onClick={handleQuickDemo}
-                className="w-full py-2.5 px-3 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold flex items-center justify-between transition-all border border-emerald-200/80 group"
+                onClick={() => setLoginMethod('phone')}
+                className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  loginMethod === 'phone'
+                    ? 'bg-white text-emerald-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
               >
-                <span className="flex items-center gap-2">
-                  <BadgeCheckIcon className="w-4 h-4 text-emerald-600" />
-                  <span>1-Click Fill Demo Merchant</span>
-                </span>
-                <span className="text-[11px] text-emerald-700 font-mono group-hover:translate-x-0.5 transition-transform">
-                  Auto-fill →
-                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Mobile (+880 BD)</span>
               </button>
             </div>
 
-            {/* Terms checkbox */}
-            <label className="flex items-start gap-2.5 text-[11px] text-slate-500 pt-1 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 rounded-md text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-              />
-              <span>
-                I agree to the SlipDo SaaS Terms of Service and cryptographic receipt verification agreement.
-              </span>
-            </label>
+            <form onSubmit={handleStep1Submit} className="space-y-4">
+              {loginMethod === 'email' ? (
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Business Email Address
+                  </label>
+                  <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-slate-50 focus-within:border-emerald-600 focus-within:bg-white overflow-hidden transition-all shadow-xs">
+                    <span className="px-3.5 py-3 text-slate-400 border-r border-slate-200 bg-slate-100/80 flex items-center shrink-0">
+                      <MailIcon className="w-4 h-4 text-emerald-600" />
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="merchant@yourstore.com"
+                      className="flex-1 px-3.5 py-3 text-xs sm:text-sm font-semibold text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400"
+                    />
+                    {email && (
+                      <button
+                        type="button"
+                        onClick={() => setEmail('')}
+                        className="p-2 mr-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    We will send both a 1-click Magic Link and a 6-digit verification code to your email.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Bangladesh Mobile Number
+                    </label>
+                    {detectedOperator && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        {detectedOperator}
+                      </span>
+                    )}
+                  </div>
 
-            {/* Continue to Step 2 Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-            >
-              <span>{loading ? 'Sending Code...' : 'Send Verification Code'}</span>
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          </form>
+                  <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-slate-50 focus-within:border-emerald-600 focus-within:bg-white overflow-hidden transition-all shadow-xs">
+                    <span className="px-3.5 py-3 text-xs font-bold text-slate-700 border-r border-slate-200 bg-slate-100/80 flex items-center gap-1.5 shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>+880</span>
+                    </span>
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="01711 - 223344"
+                      className="flex-1 px-3.5 py-3 text-sm font-mono font-semibold text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400"
+                    />
+                    {phone && (
+                      <button
+                        type="button"
+                        onClick={() => setPhone('')}
+                        className="p-2 mr-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Enter your 11-digit mobile (e.g. 017, 018, 019, 016, 013, 014, 015).
+                  </p>
+                </div>
+              )}
+
+              {/* 1-Click Sandbox Test helper */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleQuickDemo}
+                  className="w-full py-2.5 px-3 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold flex items-center justify-between transition-all border border-emerald-200/80 group"
+                >
+                  <span className="flex items-center gap-2">
+                    <BadgeCheckIcon className="w-4 h-4 text-emerald-600" />
+                    <span>1-Click Fill Demo Credentials</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-mono group-hover:translate-x-0.5 transition-transform">
+                    Auto-fill →
+                  </span>
+                </button>
+              </div>
+
+              {/* Terms checkbox */}
+              <label className="flex items-start gap-2.5 text-[11px] text-slate-500 pt-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 rounded-md text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span>
+                  I agree to the SlipDo SaaS Terms of Service and cryptographic receipt verification agreement.
+                </span>
+              </label>
+
+              {/* Continue to Step 2 Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                <span>{loading ? 'Dispatching...' : loginMethod === 'email' ? 'Send Link & Code' : 'Send Verification Code'}</span>
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
         )}
 
-        {/* ================= STEP 2: VERIFICATION (OTP) ================= */}
+        {/* ================= STEP 2: VERIFICATION (OTP & MAGIC LINK) ================= */}
         {currentStep === 2 && (
           <form onSubmit={handleStep2Submit} className="space-y-6 animate-fade-in">
             <div>
               <div className="flex items-center justify-between">
                 <h2 className="font-display font-extrabold text-xl text-slate-900 tracking-tight">
-                  Verify Security Code
+                  Verify Login Credentials
                 </h2>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
                   className="text-xs font-semibold text-emerald-700 hover:underline"
                 >
-                  Edit number
+                  Change {loginMethod === 'email' ? 'email' : 'number'}
                 </button>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Enter the 6-digit verification code sent to{' '}
+                Dispatched to{' '}
                 <strong className="text-slate-900 font-mono">
-                  {loginMethod === 'phone' ? `+880 ${phone}` : email}
+                  {loginMethod === 'email' ? email : `+880 ${phone}`}
                 </strong>
               </p>
             </div>
 
+            {/* Explanatory Dual-Method Callout Box */}
+            {loginMethod === 'email' && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold">
+                  <ShieldCheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Two seamless ways to verify:</span>
+                </div>
+                <ul className="space-y-1.5 text-emerald-900 text-[11px] pl-6 list-disc">
+                  <li>
+                    <strong>Click the Magic Link</strong> in your email to sign in instantly without typing anything.
+                  </li>
+                  <li>
+                    <strong>OR enter the 6-digit code</strong> from the email into the boxes below.
+                  </li>
+                </ul>
+              </div>
+            )}
+
             {/* 6 Digit Input Boxes */}
             <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Enter 6-Digit Code
+              </label>
               <div className="flex items-center justify-between gap-1.5 sm:gap-2.5">
                 {otp.map((digit, idx) => (
                   <input
@@ -634,35 +806,35 @@ export default function LoginPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setResendCountdown(45);
-                      showToast('New code sent via SMS');
-                    }}
+                    onClick={handleResend}
+                    disabled={loading}
                     className="text-emerald-700 font-bold hover:underline"
                   >
-                    Resend Code
+                    Resend Link & Code
                   </button>
                 )}
               </div>
             </div>
 
-            {/* 1-Click WhatsApp Alternative */}
-            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5 text-emerald-950 font-medium">
-                <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
-                <div>
-                  <p className="font-bold text-[11px]">Send code via WhatsApp</p>
-                  <p className="text-[10px] text-emerald-700">Instant delivery with zero SMS delays</p>
+            {/* 1-Click WhatsApp Alternative if phone was used */}
+            {loginMethod === 'phone' && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5 text-emerald-950 font-medium">
+                  <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+                  <div>
+                    <p className="font-bold text-[11px]">Send code via WhatsApp</p>
+                    <p className="text-[10px] text-emerald-700">Instant delivery with zero SMS delays</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => showToast('Verification code dispatched to your WhatsApp')}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs transition-colors"
+                >
+                  Send
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => showToast('Verification code dispatched to your WhatsApp')}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs transition-colors"
-              >
-                Send
-              </button>
-            </div>
+            )}
 
             {/* Buttons */}
             <div className="flex items-center gap-2.5 pt-2">
@@ -678,7 +850,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="flex-1 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                <span>{loading ? 'Verifying...' : 'Verify & Continue'}</span>
+                <span>{loading ? 'Verifying...' : 'Verify Code & Sign In'}</span>
                 <ChevronRightIcon className="w-4 h-4" />
               </button>
             </div>
@@ -771,7 +943,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Live Voucher Preview Mini-Card (Delightful UX Touch) */}
+            {/* Live Voucher Preview Mini-Card */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950 to-teal-950 text-white shadow-soft flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <span className="text-[9px] uppercase font-bold tracking-wider text-emerald-300 block mb-0.5">

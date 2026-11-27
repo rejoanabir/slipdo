@@ -27,6 +27,7 @@ import {
 export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
@@ -43,18 +44,25 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setMounted(true);
+    const session = supabase.getSession();
+    const authUser = StorageService.getAuthUser();
+    if (!session && !authUser) {
+      router.replace('/login');
+      return;
+    }
+
+    setIsAuthenticated(true);
     const bizList = StorageService.getBusinesses();
     setBusinesses(bizList);
     const current = StorageService.getActiveBusiness();
     setActiveBiz(current);
 
-    const authUser = StorageService.getAuthUser();
     if (authUser) {
       if (authUser.name) setMerchantName(authUser.name);
       if (authUser.email) setMerchantEmail(authUser.email);
       if (authUser.phone) setMerchantPhone(authUser.phone);
     }
-  }, []);
+  }, [router]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -79,7 +87,7 @@ export default function ProfilePage() {
     showToast(lang === 'bn' ? 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে' : 'Profile updated successfully!');
   };
 
-  if (!mounted || !activeBiz) {
+  if (!mounted || !isAuthenticated || !activeBiz) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
