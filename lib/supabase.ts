@@ -226,7 +226,7 @@ export class SupabaseClient {
         type?: string;
       }): Promise<AuthResponse> => {
         try {
-          const res = await fetch(`${this.url}/auth/v1/verify`, {
+          let res = await fetch(`${this.url}/auth/v1/verify`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -240,7 +240,27 @@ export class SupabaseClient {
             }),
           });
 
-          const data = await res.json();
+          let data = await res.json();
+          // Fallback retry with type: 'signup' if type: 'email' returns error
+          if (!res.ok && params.email && (!params.type || params.type === 'email')) {
+            const signupRes = await fetch(`${this.url}/auth/v1/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: this.anonKey,
+              },
+              body: JSON.stringify({
+                email: params.email,
+                token: params.token,
+                type: 'signup',
+              }),
+            });
+            if (signupRes.ok) {
+              res = signupRes;
+              data = await signupRes.json();
+            }
+          }
+
           if (!res.ok) {
             return {
               data: { user: null, session: null },
