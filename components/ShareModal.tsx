@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Receipt, Business } from '../lib/types';
 import { formatCurrency } from '../lib/format';
+import { ReceiptPreview } from './ReceiptPreview';
 import {
   WhatsAppIcon,
   PrinterIcon,
@@ -175,6 +176,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <ExternalLinkIcon className="w-3.5 h-3.5" />
           </a>
         </div>
+      </div>
+
+      {/* Hidden during screen display, targeted and rendered cleanly during print / PDF export */}
+      <div id="printable-receipt-area" className="hidden print:block">
+        <ReceiptPreview receipt={receipt} business={business} templateId={receipt.template} />
       </div>
     </div>
   );

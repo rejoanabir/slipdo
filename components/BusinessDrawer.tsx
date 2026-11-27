@@ -99,19 +99,32 @@ export const BusinessDrawer: React.FC<BusinessDrawerProps> = ({
                     : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-display font-bold text-sm text-slate-900">{biz.name}</span>
-                    {isSelected && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
-                        ACTIVE
-                      </span>
-                    )}
+                <div className="flex items-start gap-3">
+                  {biz.logoUrl ? (
+                    <img
+                      src={biz.logoUrl}
+                      alt={biz.name}
+                      className="w-10 h-10 rounded-xl object-cover bg-white p-0.5 border border-slate-200 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                      {biz.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-display font-bold text-sm text-slate-900">{biz.name}</span>
+                      {isSelected && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                          ACTIVE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{biz.category}</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {biz.address} · Tel: {biz.phone}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{biz.category}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    {biz.address} · Tel: {biz.phone}
-                  </p>
                 </div>
               </button>
             );

@@ -56,15 +56,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Active Storefront Drawer Button */}
           <button
             onClick={onOpenStoreDrawer}
-            className="hidden sm:flex items-center gap-2 ml-3 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-xs font-semibold text-slate-700 border border-slate-200/80 transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 ml-1.5 sm:ml-3 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-xs font-semibold text-slate-700 border border-slate-200/80 transition-colors max-w-[140px] sm:max-w-none shrink-0"
+            title="Switch storefront outlet"
           >
             {business.logoUrl ? (
-              <img src={business.logoUrl} alt="" className="w-4 h-4 rounded-full object-contain" />
+              <img src={business.logoUrl} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-slate-200" />
             ) : (
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
             )}
-            <span className="max-w-[150px] truncate">{business.name}</span>
-            <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <span className="max-w-[80px] sm:max-w-[150px] truncate">{business.name}</span>
+            <svg className="w-3 h-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>

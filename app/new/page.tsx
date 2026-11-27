@@ -66,6 +66,21 @@ export default function ReceiptCreatorPage() {
     if (active?.customTemplate) {
       setTemplate('custom-template');
     }
+
+    // Sync cloud businesses to ensure uploaded logo and custom templates are fresh
+    if (session?.user?.id) {
+      const uid = session.user.id;
+      supabaseDb.getBusinesses(uid).then((cloudBiz) => {
+        if (cloudBiz && cloudBiz.length > 0) {
+          StorageService.setCloudBusinesses(uid, cloudBiz);
+          setBusinesses(cloudBiz);
+          setActiveBiz(cloudBiz[0]);
+          if (cloudBiz[0]?.customTemplate) {
+            setTemplate('custom-template');
+          }
+        }
+      }).catch(console.error);
+    }
   }, [router]);
 
   const currentBiz = activeBiz || (businesses[0] ?? {
@@ -516,7 +531,7 @@ export default function ReceiptCreatorPage() {
           <div className={`lg:col-span-6 ${mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
             {editPanel}
           </div>
-          <div className={`lg:col-span-6 lg:sticky lg:top-20 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
+          <div className={`lg:col-span-6 lg:sticky lg:top-20 ${mobileTab === 'edit' ? 'hidden lg:block print:block' : 'block'}`}>
             {previewPanel}
           </div>
         </div>

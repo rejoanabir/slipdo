@@ -303,12 +303,14 @@ export default function SettingsPage() {
       customTemplate: customTemplateConfig,
     };
 
+    const updatedList = businesses.map((b) => (b.id === updatedBiz.id ? updatedBiz : b));
     StorageService.saveBusiness(updatedBiz);
     setActiveBiz(updatedBiz);
-    setBusinesses((prev) => prev.map((b) => (b.id === updatedBiz.id ? updatedBiz : b)));
+    setBusinesses(updatedList);
 
     const session = supabase.getSession();
     if (session?.user?.id) {
+      StorageService.setCloudBusinesses(session.user.id, updatedList);
       await supabaseDb.saveBusiness(updatedBiz, session.user.id).catch(console.error);
     }
 

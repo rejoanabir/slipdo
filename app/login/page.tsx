@@ -91,11 +91,7 @@ export default function LoginPage() {
 
           // Check if this user already has an active store in Supabase
           const cloudBusinesses = await supabaseDb.getBusinesses(uid);
-          if (
-            !cloudBusinesses ||
-            cloudBusinesses.length === 0 ||
-            cloudBusinesses[0].name === 'My Store'
-          ) {
+          if (!cloudBusinesses || cloudBusinesses.length === 0) {
             setAuthMode('step3_store');
           } else {
             StorageService.setCloudBusinesses(uid, cloudBusinesses);
@@ -191,7 +187,7 @@ export default function LoginPage() {
       const uid = res.data?.session?.user?.id;
       if (uid) {
         const cloudBusinesses = await supabaseDb.getBusinesses(uid);
-        if (!cloudBusinesses || cloudBusinesses.length === 0 || cloudBusinesses[0].name === 'My Store') {
+        if (!cloudBusinesses || cloudBusinesses.length === 0) {
           setAuthMode('step3_store');
         } else {
           StorageService.setCloudBusinesses(uid, cloudBusinesses);
@@ -201,7 +197,7 @@ export default function LoginPage() {
         }
       } else {
         const existing = StorageService.getBusinesses();
-        if (!existing || existing.length === 0 || existing[0].name === 'My Store') {
+        if (!existing || existing.length === 0) {
           setAuthMode('step3_store');
         } else {
           showToast('Signed in successfully!');

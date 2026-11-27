@@ -701,19 +701,21 @@ export const supabaseDb = {
   async deleteAccount(merchantId: string): Promise<boolean> {
     if (!merchantId) return false;
     try {
-      // Delete all merchant data in database
-      await supabase.fetchPostgrest(`/receipts?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      });
-      await supabase.fetchPostgrest(`/customers?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      });
-      await supabase.fetchPostgrest(`/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      });
+      // 1. Permanently delete user from auth.users and all merchant tables via SECURITY DEFINER procedure
       await supabase.fetchPostgrest(`/rpc/delete_merchant_account`, {
         method: 'POST',
         body: JSON.stringify({}),
+      });
+
+      // 2. Fallback table cleanup
+      await supabase.fetchPostgrest(`/receipts?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+      await supabase.fetchPostgrest(`/customers?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+      await supabase.fetchPostgrest(`/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
       }).catch(() => {});
       return true;
     } catch (err) {

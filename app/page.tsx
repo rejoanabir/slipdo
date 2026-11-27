@@ -65,12 +65,13 @@ export default function DashboardPage() {
             supabaseDb.getBusinesses(uid),
           ]);
 
-          // If the merchant has no business created yet, route directly to Step 3 Storefront Setup
-          if (!cloudBusinesses || cloudBusinesses.length === 0 || !StorageService.isStoreSetupCompleted(uid)) {
+          // If the merchant has no business created yet in cloud, route to Step 3 Storefront Setup
+          if (!cloudBusinesses || cloudBusinesses.length === 0) {
             router.replace('/login?step=3');
             return;
           }
 
+          StorageService.markStoreSetupCompleted(uid);
           StorageService.setCloudReceipts(uid, cloudReceipts || []);
           StorageService.setCloudBusinesses(uid, cloudBusinesses);
           setReceipts(cloudReceipts || []);
@@ -183,20 +184,29 @@ export default function DashboardPage() {
         {/* Store Banner Hero */}
         <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 rounded-3xl p-5 sm:p-7 text-white shadow-elevated relative overflow-hidden">
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-blue-200 mb-2 border border-white/10">
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                <span>{currentBiz.name}</span>
-                <span className="text-white/60">· {currentBiz.category}</span>
+            <div className="flex items-start sm:items-center gap-4">
+              {currentBiz.logoUrl ? (
+                <img
+                  src={currentBiz.logoUrl}
+                  alt={currentBiz.name}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover bg-white p-1 border-2 border-white/20 shadow-lg shrink-0"
+                />
+              ) : null}
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-blue-200 mb-2 border border-white/10">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                  <span>{currentBiz.name}</span>
+                  <span className="text-white/60">· {currentBiz.category}</span>
+                </div>
+                <h1 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">
+                  {lang === 'bn' ? 'স্মার্ট ডিজিটাল ভাউচার ও রসিদ' : 'Fast Branded Receipts & Invoicing'}
+                </h1>
+                <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl">
+                  {lang === 'bn'
+                    ? 'কয়েক সেকেন্ডে ডিজিটাল ও থার্মাল রশিদ বানান, হোয়াটসঅ্যাপে পাঠান এবং বিক্রির হিসাব রাখুন।'
+                    : 'Create branded vouchers in <30s, send 1-click via WhatsApp & SMS, and print 58mm/80mm slips.'}
+                </p>
               </div>
-              <h1 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">
-                {lang === 'bn' ? 'স্মার্ট ডিজিটাল ভাউচার ও রসিদ' : 'Fast Branded Receipts & Invoicing'}
-              </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl">
-                {lang === 'bn'
-                  ? 'কয়েক সেকেন্ডে ডিজিটাল ও থার্মাল রশিদ বানান, হোয়াটসঅ্যাপে পাঠান এবং বিক্রির হিসাব রাখুন।'
-                  : 'Create branded vouchers in <30s, send 1-click via WhatsApp & SMS, and print 58mm/80mm slips.'}
-              </p>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
