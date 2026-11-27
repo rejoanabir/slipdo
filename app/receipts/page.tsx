@@ -58,12 +58,13 @@ export default function ReceiptsArchivePage() {
         .getReceipts(session.user.id)
         .then((cloudReceipts) => {
           if (cloudReceipts && cloudReceipts.length > 0) {
-            setReceipts(cloudReceipts);
+            StorageService.mergeCloudData(cloudReceipts, []);
+            setReceipts(StorageService.getReceipts());
           }
         })
         .catch(console.error);
     }
-  }, []);
+  }, [router]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -156,14 +157,14 @@ export default function ReceiptsArchivePage() {
 
   if (!mounted || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] pb-24 md:pb-10 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-10 font-sans">
       <Navbar
         business={currentBiz}
         lang={lang}
@@ -172,30 +173,30 @@ export default function ReceiptsArchivePage() {
       />
 
       {toast && (
-        <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-fade-in">
+        <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-fade-in">
           <CheckIcon className="w-4 h-4 text-emerald-400" />
           <span>{toast}</span>
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
+      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="font-display font-bold text-xl sm:text-2xl text-slate-900">
+            <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight">
               {lang === 'bn' ? 'সকল ভাউচার ও ইনভয়েস' : 'All Vouchers & Invoices'}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mt-1">
               {lang === 'bn'
                 ? 'ইস্যু করা যেকোনো রশিদের অনুসন্ধান, অবস্থা পরিবর্তন ও প্রিন্ট করুন'
                 : 'Search, update payment status, share, or print any issued voucher'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={handleExportCsv}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs transition-all"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs transition-all"
               title="Download CSV report"
             >
               <DownloadIcon className="w-3.5 h-3.5 text-slate-600" />
@@ -203,7 +204,7 @@ export default function ReceiptsArchivePage() {
             </button>
             <Link
               href="/new"
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-soft transition-all"
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-[0.99]"
             >
               <span>+ New Receipt</span>
             </Link>
@@ -211,15 +212,15 @@ export default function ReceiptsArchivePage() {
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-soft flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-soft flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full">
             {(['All', 'Paid', 'Due', 'Void'] as const).map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                   statusFilter === st
-                    ? 'bg-white text-emerald-950 shadow-xs'
+                    ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -234,12 +235,12 @@ export default function ReceiptsArchivePage() {
               placeholder="Search by #, customer or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 w-full focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400"
+              className="text-xs bg-slate-50 border border-slate-200 rounded-full px-4 py-2 w-full focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <XIcon className="w-3.5 h-3.5" />
               </button>
@@ -248,54 +249,49 @@ export default function ReceiptsArchivePage() {
         </div>
 
         {/* Receipts Ledger Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Receipt #</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Method</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4 text-center">Status & Actions</th>
-                  <th className="py-3 px-4 text-right">Voucher</th>
+              <thead>
+                <tr className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-100 uppercase text-[11px] tracking-wider">
+                  <th className="py-3.5 px-4">Receipt #</th>
+                  <th className="py-3.5 px-4">Customer</th>
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Method</th>
+                  <th className="py-3.5 px-4 text-right">Amount</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 px-4 text-center">
+                    <td colSpan={7} className="py-14 text-center">
                       <div className="max-w-xs mx-auto space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                           <ReceiptIcon className="w-6 h-6" />
                         </div>
                         <h4 className="font-display font-bold text-sm text-slate-800">
-                          {lang === 'bn' ? 'কোন ভাউচার পাওয়া যায়নি' : 'No vouchers found'}
+                          {lang === 'bn' ? 'কোন ভাউচার পাওয়া যায়নি' : 'No Vouchers Found'}
                         </h4>
                         <p className="text-xs text-slate-500">
                           {lang === 'bn'
-                            ? 'আপনি এখনো কোন রশিদ তৈরি করেননি।'
-                            : 'All created payment slips and cash memos will be securely archived here.'}
+                            ? 'ফিল্টার পরিবর্তন করে দেখুন বা নতুন রশিদ ইস্যু করুন।'
+                            : 'Adjust your search filters or issue a new receipt.'}
                         </p>
-                        <Link
-                          href="/new"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
-                        >
-                          + Create New Receipt
-                        </Link>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filtered.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                        #{r.receiptNo || r.id}
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-bold text-slate-900 block">#{r.receiptNo || r.id}</span>
+                        <span className="text-[10px] text-slate-400 capitalize">{r.template.replace('-', ' ')}</span>
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-semibold text-slate-900 block">{r.customerName}</span>
-                        <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
+                        <span className="text-[11px] text-slate-500 font-mono">{r.customerPhone}</span>
                       </td>
                       <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
                       <td className="py-3 px-4 font-bold text-slate-700">{r.paymentMethod}</td>
@@ -307,7 +303,7 @@ export default function ReceiptsArchivePage() {
                           <span
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                               r.status === 'Paid'
-                                ? 'bg-emerald-100 text-emerald-800'
+                                ? 'bg-blue-100 text-blue-800'
                                 : r.status === 'Due'
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-slate-200 text-slate-600 line-through'
@@ -320,7 +316,7 @@ export default function ReceiptsArchivePage() {
                           {r.status === 'Due' && (
                             <button
                               onClick={() => handleStatusChange(r, 'Paid')}
-                              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-colors"
+                              className="px-2 py-0.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-colors"
                               title="Mark as Paid"
                             >
                               Paid
@@ -342,7 +338,7 @@ export default function ReceiptsArchivePage() {
                           {/* Quick Print */}
                           <button
                             onClick={() => handleQuickPrint(r)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            className="p-1.5 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Quick Print Voucher"
                           >
                             <PrinterIcon className="w-3.5 h-3.5" />
@@ -351,7 +347,7 @@ export default function ReceiptsArchivePage() {
                           {/* Preview */}
                           <button
                             onClick={() => setPreviewReceipt(r)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            className="p-1.5 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Preview Voucher"
                           >
                             <EyeIcon className="w-3.5 h-3.5" />
@@ -360,7 +356,7 @@ export default function ReceiptsArchivePage() {
                           {/* Share Modal */}
                           <button
                             onClick={() => setShareReceipt(r)}
-                            className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            className="p-1.5 rounded-full text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Share via WhatsApp & SMS"
                           >
                             <ExternalLinkIcon className="w-3.5 h-3.5" />
@@ -369,7 +365,7 @@ export default function ReceiptsArchivePage() {
                           {/* Delete Voucher */}
                           <button
                             onClick={() => handleDelete(r)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                             title="Delete Voucher"
                           >
                             <Trash2Icon className="w-3.5 h-3.5" />
@@ -419,20 +415,20 @@ export default function ReceiptsArchivePage() {
 
       {previewReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="max-w-lg w-full space-y-3">
-            <div className="flex items-center justify-between text-white px-1">
+          <div className="max-w-lg w-full space-y-3 my-8">
+            <div className="flex items-center justify-between text-white px-2">
               <span className="font-bold text-sm">Voucher Preview</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="px-3 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-1.5 rounded-full bg-white text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-colors"
                 >
-                  <PrinterIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  <PrinterIcon className="w-3.5 h-3.5 text-blue-600" />
                   <span>Print</span>
                 </button>
                 <button
                   onClick={() => setPreviewReceipt(null)}
-                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                 >
                   <XIcon className="w-4 h-4" />
                 </button>

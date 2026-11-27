@@ -2,16 +2,37 @@ import React from 'react';
 import { LogoLockup } from '../lib/types';
 
 interface LogoProps {
-  lockup?: LogoLockup;
+  lockup?: LogoLockup | 'sparkle-dark';
   className?: string;
   size?: number;
 }
 
 export const SlipDoLogo: React.FC<LogoProps> = ({
-  lockup = 'voucher-check',
+  lockup = 'sparkle-dark',
   className = 'w-9 h-9',
   size = 36,
 }) => {
+  // MODERN SPARKLE DARK (Harmonized with Login Screen Brand Badge)
+  if (lockup === 'sparkle-dark') {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-sm shadow-slate-900/20 ${className}`}
+      >
+        <svg
+          width={Math.round(size * 0.55)}
+          height={Math.round(size * 0.55)}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* 4-pointed star / sparkle mark */}
+          <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" />
+        </svg>
+      </div>
+    );
+  }
+
   if (lockup === 'monogram-s') {
     return (
       <svg
@@ -24,8 +45,8 @@ export const SlipDoLogo: React.FC<LogoProps> = ({
       >
         <defs>
           <linearGradient id="sdGradMono" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#059669" />
-            <stop offset="1" stopColor="#0D9488" />
+            <stop stopColor="#2563eb" />
+            <stop offset="1" stopColor="#1d4ed8" />
           </linearGradient>
         </defs>
         <rect width="40" height="40" rx="12" fill="url(#sdGradMono)" />
@@ -35,7 +56,7 @@ export const SlipDoLogo: React.FC<LogoProps> = ({
           strokeWidth="3.2"
           strokeLinecap="round"
         />
-        <circle cx="27" cy="13" r="2" fill="#34D399" />
+        <circle cx="27" cy="13" r="2" fill="#60a5fa" />
       </svg>
     );
   }
@@ -52,8 +73,8 @@ export const SlipDoLogo: React.FC<LogoProps> = ({
     >
       <defs>
         <linearGradient id="sdGradVoucher" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#059669" />
-          <stop offset="1" stopColor="#0D9488" />
+          <stop stopColor="#2563eb" />
+          <stop offset="1" stopColor="#1d4ed8" />
         </linearGradient>
       </defs>
       <rect width="40" height="40" rx="12" fill="url(#sdGradVoucher)" />

@@ -62,12 +62,12 @@ export default function DashboardPage() {
           supabaseDb.getReceipts(session.user.id),
           supabaseDb.getBusinesses(session.user.id),
         ]).then(([cloudReceipts, cloudBusinesses]) => {
-          if (cloudReceipts && cloudReceipts.length > 0) {
-            setReceipts(cloudReceipts);
-          }
-          if (cloudBusinesses && cloudBusinesses.length > 0) {
-            setBusinesses(cloudBusinesses);
-            setActiveBiz(cloudBusinesses[0]);
+          if (cloudReceipts || cloudBusinesses) {
+            StorageService.mergeCloudData(cloudReceipts || [], cloudBusinesses || []);
+            setReceipts(StorageService.getReceipts());
+            const updatedBiz = StorageService.getBusinesses();
+            setBusinesses(updatedBiz);
+            setActiveBiz(StorageService.getActiveBusiness());
           }
         }).catch(console.error);
       }
@@ -102,7 +102,7 @@ export default function DashboardPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // Check if voucher was issued today (handles both local "Today, 12:00" and Supabase timestamps)
+  // Check if voucher was issued today
   const isIssuedToday = (dateStr?: string) => {
     if (!dateStr) return false;
     if (dateStr.toLowerCase().includes('today')) return true;
@@ -125,29 +125,29 @@ export default function DashboardPage() {
   const renderPaymentBadge = (method: string) => {
     switch (method) {
       case 'bKash':
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E2136E]/10 text-[#E2136E] border border-[#E2136E]/20">bKash</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E2136E]/10 text-[#E2136E] border border-[#E2136E]/20">bKash</span>;
       case 'Nagad':
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F7941D]/10 text-[#F7941D] border border-[#F7941D]/20">Nagad</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F7941D]/10 text-[#F7941D] border border-[#F7941D]/20">Nagad</span>;
       case 'Rocket':
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8C3494]/10 text-[#8C3494] border border-[#8C3494]/20">Rocket</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#8C3494]/10 text-[#8C3494] border border-[#8C3494]/20">Rocket</span>;
       case 'Cash':
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">Cash</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">Cash</span>;
       default:
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">{method}</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">{method}</span>;
     }
   };
 
   if (!mounted || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         <span className="text-xs font-semibold text-slate-500">Checking merchant session...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] pb-24 md:pb-10 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-10 font-sans">
       <Navbar
         business={currentBiz}
         lang={lang}
@@ -158,25 +158,25 @@ export default function DashboardPage() {
       <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
         {/* Toast Notification */}
         {toastMessage && (
-          <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg animate-fade-in flex items-center gap-2">
+          <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xl animate-fade-in flex items-center gap-2">
             <CheckIcon className="w-4 h-4 text-emerald-400" />
             <span>{toastMessage}</span>
           </div>
         )}
 
         {/* Store Banner Hero */}
-        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-3xl p-5 sm:p-7 text-white shadow-elevated relative overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 rounded-3xl p-5 sm:p-7 text-white shadow-elevated relative overflow-hidden">
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-emerald-200 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-blue-200 mb-2 border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
                 <span>{currentBiz.name}</span>
                 <span className="text-white/60">· {currentBiz.category}</span>
               </div>
               <h1 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">
                 {lang === 'bn' ? 'স্মার্ট ডিজিটাল ভাউচার ও রসিদ' : 'Fast Branded Receipts & Invoicing'}
               </h1>
-              <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-xl">
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl">
                 {lang === 'bn'
                   ? 'কয়েক সেকেন্ডে ডিজিটাল ও থার্মাল রশিদ বানান, হোয়াটসঅ্যাপে পাঠান এবং বিক্রির হিসাব রাখুন।'
                   : 'Create branded vouchers in <30s, send 1-click via WhatsApp & SMS, and print 58mm/80mm slips.'}
@@ -186,33 +186,33 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 shrink-0">
               <Link
                 href="/new"
-                className="px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-900 font-display font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95"
+                className="px-5 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 transition-all active:scale-95"
               >
                 + Create Receipt
               </Link>
               <button
                 onClick={() => setIsSslModalOpen(true)}
-                className="px-4 py-3 rounded-2xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-semibold text-xs border border-emerald-500/50 transition-colors inline-flex items-center gap-1.5"
+                className="px-4 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-xs transition-colors inline-flex items-center gap-1.5"
               >
-                <ZapIcon className="w-3.5 h-3.5" />
+                <ZapIcon className="w-3.5 h-3.5 text-blue-300" />
                 <span>Upgrade Pro</span>
               </button>
             </div>
           </div>
-          <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
         </div>
 
         {/* 4 Financial KPI Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-soft">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today's Sales</p>
             <p className="font-display font-bold text-lg sm:text-2xl text-slate-900 mt-1">
               {formatCurrency(todaySales, lang === 'bn')}
             </p>
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">Real-time daily volume</p>
+            <p className="text-[11px] text-blue-600 font-medium mt-1">Real-time daily volume</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-soft">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Volume</p>
             <p className="font-display font-bold text-lg sm:text-2xl text-slate-900 mt-1">
               {formatCurrency(totalVolume, lang === 'bn')}
@@ -220,15 +220,15 @@ export default function DashboardPage() {
             <p className="text-[11px] text-slate-400 font-medium mt-1">Lifetime processed</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-soft">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Receipts Issued</p>
             <p className="font-display font-bold text-lg sm:text-2xl text-slate-900 mt-1">
               {receipts.length}
             </p>
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">Active vouchers</p>
+            <p className="text-[11px] text-blue-600 font-medium mt-1">Active vouchers</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-soft">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Customers</p>
             <p className="font-display font-bold text-lg sm:text-2xl text-slate-900 mt-1">
               {StorageService.getCustomers().length}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Receipts Archive Section */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="font-display font-bold text-base text-slate-900">
@@ -256,15 +256,15 @@ export default function DashboardPage() {
                 suppressHydrationWarning
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={lang === 'bn' ? 'ভাউচার নং, ক্রেতার নাম...' : 'Search receipt ID, customer, phone...'}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs w-full sm:w-60 focus:outline-none focus:border-emerald-500"
+                className="px-4 py-2 rounded-full bg-slate-50 border border-slate-200 text-xs w-full sm:w-60 focus:outline-none focus:border-blue-500"
               />
 
-              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl text-xs font-medium">
+              <div className="flex gap-1 bg-slate-100 p-1 rounded-full text-xs font-medium">
                 {(['All', 'Paid', 'Due', 'Void'] as const).map((st) => (
                   <button
                     key={st}
                     onClick={() => setFilterStatus(st)}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
+                    className={`px-3 py-1 rounded-full text-xs transition-all ${
                       filterStatus === st
                         ? 'bg-white font-bold text-slate-900 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -281,7 +281,7 @@ export default function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100 uppercase text-[11px] tracking-wider">
+                <tr className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-100 uppercase text-[11px] tracking-wider">
                   <th className="py-3 px-4">Receipt #</th>
                   <th className="py-3 px-4">Customer</th>
                   <th className="py-3 px-4">Date</th>
@@ -296,7 +296,7 @@ export default function DashboardPage() {
                   <tr>
                     <td colSpan={7} className="py-12 text-center">
                       <div className="max-w-xs mx-auto space-y-3">
-                        <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                           <ReceiptIcon className="w-6 h-6" />
                         </div>
                         <h4 className="font-display font-bold text-sm text-slate-800">
@@ -309,7 +309,7 @@ export default function DashboardPage() {
                         </p>
                         <Link
                           href="/new"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all"
                         >
                           + Create First Receipt
                         </Link>
@@ -336,7 +336,7 @@ export default function DashboardPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             r.status === 'Paid'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-blue-100 text-blue-800'
                               : r.status === 'Due'
                               ? 'bg-amber-100 text-amber-800'
                               : 'bg-slate-200 text-slate-600 line-through'
@@ -349,14 +349,14 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setPreviewReceipt(r)}
-                            className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50 text-xs font-semibold inline-flex items-center gap-1 transition-colors"
                           >
                             <EyeIcon className="w-3.5 h-3.5" />
                             <span>Preview</span>
                           </button>
                           <button
                             onClick={() => setShareReceipt(r)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
+                            className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold inline-flex items-center gap-1 border border-blue-200/60 transition-colors"
                           >
                             <span>Share</span>
                             <ExternalLinkIcon className="w-3.5 h-3.5" />
@@ -411,7 +411,7 @@ export default function DashboardPage() {
       {previewReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-transparent my-8 space-y-3">
-            <div className="flex justify-between items-center bg-white px-5 py-3 rounded-2xl shadow-sm">
+            <div className="flex justify-between items-center bg-white px-5 py-3.5 rounded-3xl shadow-sm">
               <span className="font-display font-bold text-sm text-slate-900">
                 Voucher #{previewReceipt.id}
               </span>
@@ -422,7 +422,7 @@ export default function DashboardPage() {
                     setPreviewReceipt(null);
                     setShareReceipt(r);
                   }}
-                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition-all shadow-xs"
                 >
                   Share / Print
                 </button>

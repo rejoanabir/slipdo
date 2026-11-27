@@ -235,4 +235,32 @@ export class StorageService {
     localStorage.removeItem(KEYS.AUTH_TOKEN);
     localStorage.removeItem('slipdo_supabase_session');
   }
+
+  static mergeCloudData(cloudReceipts: Receipt[] = [], cloudBusinesses: Business[] = []): { receipts: Receipt[]; businesses: Business[] } {
+    if (!this.isClient()) return { receipts: [], businesses: [] };
+    
+    let finalBusinesses = this.getBusinesses();
+    if (cloudBusinesses && cloudBusinesses.length > 0) {
+      const map = new Map<string, Business>();
+      finalBusinesses.forEach((b) => map.set(b.id, b));
+      cloudBusinesses.forEach((b) => map.set(b.id, b));
+      finalBusinesses = Array.from(map.values());
+      localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(finalBusinesses));
+      const currentActive = localStorage.getItem(KEYS.ACTIVE_BIZ);
+      if (!currentActive || !finalBusinesses.find((b) => b.id === currentActive)) {
+        localStorage.setItem(KEYS.ACTIVE_BIZ, finalBusinesses[0].id);
+      }
+    }
+
+    let finalReceipts = this.getReceipts();
+    if (cloudReceipts && cloudReceipts.length > 0) {
+      const map = new Map<string, Receipt>();
+      finalReceipts.forEach((r) => map.set(r.token || r.id, r));
+      cloudReceipts.forEach((r) => map.set(r.token || r.id, r));
+      finalReceipts = Array.from(map.values());
+      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(finalReceipts));
+    }
+
+    return { receipts: finalReceipts, businesses: finalBusinesses };
+  }
 }

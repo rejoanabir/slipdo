@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageService } from '../../lib/storage';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseDb } from '../../lib/supabase';
+import { Business, Currency } from '../../lib/types';
+import { CountryCodeSelect } from '../../components/CountryCodeSelect';
 import {
   SparklesIcon,
   MailIcon,
@@ -12,12 +14,22 @@ import {
   GoogleIcon,
   CheckIcon,
   AlertCircleIcon,
-  ChevronRightIcon,
   ShieldCheckIcon,
+  BuildingIcon,
   XIcon,
 } from '../../components/Icons';
 
-type AuthMode = 'signin' | 'signup' | 'forgot' | 'otp_verify';
+type AuthMode = 'signin' | 'signup' | 'forgot' | 'otp_verify' | 'step3_store';
+
+const CATEGORIES = [
+  'General Retail & Services',
+  'Fashion & Clothing',
+  'Electronics & Tech',
+  'Grocery & Super Shop',
+  'Restaurant & Cafe',
+  'Pharmacy & Healthcare',
+  'Wholesale & Distribution',
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +38,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Form Fields
+  // Form Fields (Step 1 & 2)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,7 +46,7 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // OTP Verification Fields (for signup confirmation or passwordless)
+  // OTP Verification Fields
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [resendCountdown, setResendCountdown] = useState(60);
   const [verificationNotice, setVerificationNotice] = useState('');
@@ -44,6 +56,17 @@ export default function LoginPage() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
+  // Step 3 Storefront Setup Fields
+  const [storeName, setStoreName] = useState('');
+  const [storeCategory, setStoreCategory] = useState(CATEGORIES[0]);
+  const [storeCountryCode, setStoreCountryCode] = useState('+880'); // Default BD
+  const [storePhone, setStorePhone] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+  const [storeCurrency, setStoreCurrency] = useState<Currency>('BDT');
+  const [storeBin, setStoreBin] = useState('');
+  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(null);
+  const [storeSignatureUrl, setStoreSignatureUrl] = useState<string | null>(null);
+
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -52,13 +75,18 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
 
-    // 1. Check for incoming OAuth or Magic Link redirect
     const handleAuthRedirect = async () => {
       try {
         const session = await supabase.handleAuthCallback();
         if (session?.user) {
-          showToast('Signed in successfully via secure link');
-          setTimeout(() => router.replace('/'), 400);
+          // Check if user already has an active store
+          const existing = StorageService.getBusinesses();
+          if (existing && existing.length > 0 && existing[0].name !== 'My Store') {
+            showToast('Signed in successfully!');
+            setTimeout(() => router.replace('/'), 400);
+          } else {
+            setAuthMode('step3_store');
+          }
         }
       } catch (err) {
         console.error('Redirect auth handling error:', err);
@@ -114,13 +142,12 @@ export default function LoginPage() {
         setFailedAttempts(newFailed);
 
         if (newFailed >= 5) {
-          setLockoutRemaining(300); // 5 min lockout
+          setLockoutRemaining(300);
           showToast('Too many failed attempts. Locked for 5 minutes.', 'error');
         } else if (newFailed >= 3) {
-          setLockoutRemaining(20); // 20s pause
+          setLockoutRemaining(20);
           showToast('3 incorrect attempts. Please wait 20 seconds.', 'error');
         } else {
-          // If unconfirmed email, allow instant verification via OTP
           if (res.error.message?.toLowerCase().includes('not confirmed')) {
             showToast('Email not confirmed. Sending a 6-digit code to verify.', 'error');
             await supabase.auth.signInWithOtp({ email: cleanEmail });
@@ -135,7 +162,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Success
       setFailedAttempts(0);
       setLockoutRemaining(0);
 
@@ -143,8 +169,14 @@ export default function LoginPage() {
         localStorage.setItem('slipdo_remember_device', 'true');
       }
 
-      showToast('Signed in successfully!');
-      setTimeout(() => router.replace('/'), 400);
+      // Check if user has an existing business configured
+      const existing = StorageService.getBusinesses();
+      if (!existing || existing.length === 0 || existing[0].name === 'My Store') {
+        setAuthMode('step3_store');
+      } else {
+        showToast('Signed in successfully!');
+        setTimeout(() => router.replace('/'), 400);
+      }
     } catch (err: any) {
       showToast(err?.message || 'Authentication error occurred', 'error');
     } finally {
@@ -185,15 +217,15 @@ export default function LoginPage() {
         return;
       }
 
-      // If session returned immediately (email confirmation disabled)
+      // If email confirmation is disabled and session returned immediately:
       if (res.data?.session) {
-        showToast('Account registered and authenticated!');
-        setTimeout(() => router.replace('/'), 400);
+        showToast('Account registered! Now set up your storefront.');
+        setAuthMode('step3_store');
         return;
       }
 
-      // If email confirmation required, transition smoothly to OTP verify
-      showToast('Account created! A 6-digit verification code was sent to your email.');
+      // Email confirmation required:
+      showToast('Account created! Enter the 6-digit verification code sent to your email.');
       setVerificationNotice(`Enter the 6-digit verification code sent to ${cleanEmail}`);
       setAuthMode('otp_verify');
       setResendCountdown(60);
@@ -205,7 +237,7 @@ export default function LoginPage() {
     }
   };
 
-  // --- Forgot Password / Magic Link Dispatch ---
+  // --- Forgot Password ---
   const handleForgotPassword = async () => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
@@ -239,7 +271,7 @@ export default function LoginPage() {
     }
   };
 
-  // --- OTP Verification Execution ---
+  // --- OTP Verification ---
   const executeOtpVerification = async (code: string) => {
     if (code.length < 6) {
       showToast('Please enter all 6 digits of the code', 'error');
@@ -262,15 +294,15 @@ export default function LoginPage() {
         return;
       }
 
-      showToast('Identity confirmed! Entering dashboard...');
-      setTimeout(() => router.replace('/'), 400);
+      showToast('Identity confirmed! Please configure your storefront.');
+      setAuthMode('step3_store');
     } catch (err: any) {
       showToast(err?.message || 'Verification error', 'error');
       setLoading(false);
     }
   };
 
-  // OTP Input & Paste Handlers
+  // OTP Input Handlers
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').trim().replace(/\D/g, '').slice(0, 6);
@@ -334,6 +366,86 @@ export default function LoginPage() {
     }
   };
 
+  // Logo File Upload Handler
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Logo file size must be under 2MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setStoreLogoUrl(ev.target?.result as string);
+      showToast('Store logo uploaded!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Signature File Upload Handler
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Signature file size must be under 2MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setStoreSignatureUrl(ev.target?.result as string);
+      showToast('Digital signature uploaded!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // --- Step 3 Storefront Setup Submission ---
+  const handleStep3Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!storeName.trim()) {
+      showToast('Please enter your store or business name', 'error');
+      return;
+    }
+    if (!storeAddress.trim()) {
+      showToast('Please provide your store or outlet address', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    const fullPhone = storePhone.trim() ? `${storeCountryCode} ${storePhone.trim()}` : '';
+
+    const newBusiness: Business = {
+      id: 'biz_' + Date.now(),
+      name: storeName.trim(),
+      category: storeCategory,
+      address: storeAddress.trim(),
+      phone: fullPhone,
+      bin: storeBin.trim(),
+      currency: storeCurrency,
+      currencySymbol: storeCurrency === 'USD' ? '$' : storeCurrency === 'EUR' ? '€' : storeCurrency === 'INR' ? '₹' : '৳',
+      logoUrl: storeLogoUrl || undefined,
+      signatureUrl: storeSignatureUrl || undefined,
+    };
+
+    try {
+      // 1. Save to local storage
+      StorageService.saveBusiness(newBusiness);
+      StorageService.setActiveBusiness(newBusiness.id);
+
+      // 2. Save to Supabase cloud if session is present
+      const session = supabase.getSession();
+      if (session?.user?.id) {
+        await supabaseDb.saveBusiness(newBusiness, session.user.id).catch(console.error);
+      }
+
+      showToast('Storefront configured successfully! Welcome to SlipDo.');
+      setTimeout(() => router.replace('/'), 500);
+    } catch (err: any) {
+      showToast(err?.message || 'Error saving storefront details', 'error');
+      setLoading(false);
+    }
+  };
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
@@ -369,38 +481,66 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Main Reference Card Container */}
-      <main className="w-full max-w-[380px] sm:max-w-[400px] mx-auto py-6">
-        {/* Brand Header */}
-        <div className="flex items-center justify-center gap-2.5 mb-5">
-          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md shadow-slate-900/20">
-            <SparklesIcon className="w-5 h-5 text-white" />
+      {/* Main Card Container */}
+      <main className="w-full max-w-[390px] sm:max-w-[420px] mx-auto py-6">
+        {/* Brand Header: Different Logo on Step 3 as requested */}
+        {authMode === 'step3_store' ? (
+          <div className="flex flex-col items-center justify-center text-center mb-6">
+            <div className="relative mb-3">
+              {storeLogoUrl ? (
+                <img
+                  src={storeLogoUrl}
+                  alt="Store Logo"
+                  className="w-16 h-16 rounded-3xl object-contain p-1.5 bg-white border border-slate-200 shadow-md shadow-blue-500/10"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#1e40af] to-[#3b82f6] text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
+                  <BuildingIcon className="w-8 h-8 text-white" />
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-slate-900 text-white text-[9px] font-bold tracking-wider uppercase border-2 border-white shadow-2xs">
+                Outlet
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Setup Your Storefront
+            </h1>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              Step 3 of 3: Configure branding & digital receipts
+            </p>
           </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">SlipDo</span>
-        </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-center gap-2.5 mb-5">
+              <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md shadow-slate-900/20">
+                <SparklesIcon className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-2xl font-black tracking-tight text-slate-900">SlipDo</span>
+            </div>
 
-        {/* Title & Subtitle */}
-        <div className="text-center mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            {authMode === 'signup'
-              ? 'Create an Account'
-              : authMode === 'otp_verify'
-              ? 'Enter Verification Code'
-              : 'Welcome Back Creative!'}
-          </h1>
-          <p className="text-xs text-slate-400 font-medium mt-1">
-            {authMode === 'signup'
-              ? 'Start issuing digital receipts in seconds'
-              : authMode === 'otp_verify'
-              ? verificationNotice || 'Verify code to access your merchant account'
-              : 'We Are Happy To See You Again'}
-          </p>
-        </div>
+            <div className="text-center mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {authMode === 'signup'
+                  ? 'Create an Account'
+                  : authMode === 'otp_verify'
+                  ? 'Enter Verification Code'
+                  : 'Welcome Back Creative!'}
+              </h1>
+              <p className="text-xs text-slate-400 font-medium mt-1">
+                {authMode === 'signup'
+                  ? 'Start issuing digital receipts in seconds'
+                  : authMode === 'otp_verify'
+                  ? verificationNotice || 'Verify code to access your merchant account'
+                  : 'We Are Happy To See You Again'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ================= MODE: SIGN IN / SIGN UP ================= */}
-        {authMode !== 'otp_verify' && (
+        {(authMode === 'signin' || authMode === 'signup') && (
           <div className="space-y-4">
-            {/* Pill Segmented Switch: Sign in | Sign Up */}
+            {/* Pill Segmented Switch */}
             <div className="flex p-1 rounded-full border border-slate-200 bg-white/90 shadow-2xs mb-5">
               <button
                 type="button"
@@ -456,7 +596,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 flex items-center justify-center"
                 >
                   {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                 </button>
@@ -476,7 +616,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 flex items-center justify-center"
                   >
                     {showConfirmPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                   </button>
@@ -527,7 +667,7 @@ export default function LoginPage() {
               <div className="flex-grow border-t border-slate-200" />
             </div>
 
-            {/* Google OAuth (Apple explicitly excluded per instructions) */}
+            {/* Google OAuth (No Apple login per instruction) */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
@@ -604,6 +744,184 @@ export default function LoginPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* ================= MODE: STEP 3 STOREFRONT SETUP ================= */}
+        {authMode === 'step3_store' && (
+          <form onSubmit={handleStep3Submit} className="space-y-4 animate-fade-in">
+            {/* Store Name Input */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                Store / Outlet Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                placeholder="e.g. Apex Retail, Velvet Studio"
+                className="w-full px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
+              />
+            </div>
+
+            {/* Category Select */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                Business Category
+              </label>
+              <div className="relative">
+                <select
+                  value={storeCategory}
+                  onChange={(e) => setStoreCategory(e.target.value)}
+                  className="w-full appearance-none px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs pr-10"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Store Contact Phone with Country Code */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                Contact Phone
+              </label>
+              <div className="flex items-center gap-2">
+                <CountryCodeSelect
+                  value={storeCountryCode}
+                  onChange={setStoreCountryCode}
+                />
+                <input
+                  type="tel"
+                  value={storePhone}
+                  onChange={(e) => setStorePhone(e.target.value)}
+                  placeholder="1711-223344"
+                  className="flex-1 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-mono font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
+                />
+              </div>
+            </div>
+
+            {/* Physical Outlet Address */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                Physical Outlet Address *
+              </label>
+              <input
+                type="text"
+                required
+                value={storeAddress}
+                onChange={(e) => setStoreAddress(e.target.value)}
+                placeholder="Shop 42, Level 2, Elephant Road, Dhaka"
+                className="w-full px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
+              />
+            </div>
+
+            {/* Currency & BIN Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Currency
+                </label>
+                <select
+                  value={storeCurrency}
+                  onChange={(e) => setStoreCurrency(e.target.value as Currency)}
+                  className="w-full px-4 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-[#3b82f6] shadow-2xs"
+                >
+                  <option value="BDT">BDT (৳)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="INR">INR (₹)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  BIN / VAT No.
+                </label>
+                <input
+                  type="text"
+                  value={storeBin}
+                  onChange={(e) => setStoreBin(e.target.value)}
+                  placeholder="000123456-0101"
+                  className="w-full px-4 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-mono font-medium focus:outline-none focus:border-[#3b82f6] shadow-2xs"
+                />
+              </div>
+            </div>
+
+            {/* Store Logo & Signature Upload Cards */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              {/* Logo Upload */}
+              <div className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center flex flex-col items-center justify-center">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Store Logo
+                </label>
+                {storeLogoUrl ? (
+                  <div className="relative mb-2">
+                    <img src={storeLogoUrl} alt="Preview" className="w-12 h-12 object-contain rounded-xl border border-slate-200 p-1" />
+                    <button
+                      type="button"
+                      onClick={() => setStoreLogoUrl(null)}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center mb-1.5 text-slate-400">
+                    <BuildingIcon className="w-5 h-5" />
+                  </div>
+                )}
+                <label className="cursor-pointer px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all">
+                  <span>{storeLogoUrl ? 'Change' : 'Upload Logo'}</span>
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </label>
+              </div>
+
+              {/* Signature Upload */}
+              <div className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center flex flex-col items-center justify-center">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Digital Signature
+                </label>
+                {storeSignatureUrl ? (
+                  <div className="relative mb-2">
+                    <img src={storeSignatureUrl} alt="Signature" className="h-10 w-auto object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setStoreSignatureUrl(null)}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center mb-1.5 text-slate-400">
+                    <ShieldCheckIcon className="w-5 h-5" />
+                  </div>
+                )}
+                <label className="cursor-pointer px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all">
+                  <span>{storeSignatureUrl ? 'Change' : 'Upload Sign'}</span>
+                  <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            {/* Submit Step 3 */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-3 rounded-full bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/20 active:scale-[0.99] transition-all disabled:opacity-50"
+            >
+              {loading ? 'Configuring Storefront...' : 'Complete Store Setup & Launch'}
+            </button>
+          </form>
         )}
 
         {/* Security Footer Note */}

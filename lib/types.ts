@@ -9,9 +9,32 @@ export type TemplateId =
   | 'bangla-memo'
   | 'classic-formal'
   | 'clean-minimalist'
-  | 'thermal-pos';
+  | 'thermal-pos'
+  | 'custom-template';
 
-export type LogoLockup = 'voucher-check' | 'monogram-s';
+export type LogoLockup = 'voucher-check' | 'monogram-s' | 'sparkle-badge';
+
+export interface CustomTemplateConfig {
+  name: string;
+  primaryColor: string; // Hex color code e.g. '#2563eb'
+  headerLayout: 'split' | 'centered' | 'minimal';
+  showLogo: boolean;
+  showPhone: boolean;
+  showAddress: boolean;
+  showBin: boolean;
+  showQrCode: boolean;
+  showSignature: boolean;
+  showPaymentBadge: boolean;
+  customFooterNotes?: string;
+  fontFamily?: 'sans' | 'mono' | 'serif' | 'bengali';
+  borderStyle?: 'solid' | 'dashed' | 'none';
+}
+
+export interface CountryInfo {
+  code: string; // ISO 2-letter, e.g. 'BD'
+  dialCode: string; // e.g. '+880'
+  name: string;
+}
 
 export interface Business {
   id: string;
@@ -23,6 +46,8 @@ export interface Business {
   phone: string;
   bin: string;
   logoUrl?: string;
+  signatureUrl?: string;
+  customTemplate?: CustomTemplateConfig;
   currency: Currency;
   currencySymbol: string;
 }
@@ -71,6 +96,9 @@ export interface Receipt {
   totals?: ReceiptTotals;
   notes?: string;
   notesBn?: string;
+  logoUrl?: string;
+  signatureUrl?: string;
+  customTemplate?: CustomTemplateConfig;
 }
 
 export interface FigmaChecklistItem {

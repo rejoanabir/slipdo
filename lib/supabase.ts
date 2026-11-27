@@ -563,6 +563,9 @@ export const supabaseDb = {
       bin: b.bin || '',
       currency: b.currency || 'BDT',
       currencySymbol: b.currency_symbol || '৳',
+      logoUrl: b.logo_url || undefined,
+      signatureUrl: b.signature_url || undefined,
+      customTemplate: b.custom_template || undefined,
     }));
   },
 
@@ -577,6 +580,9 @@ export const supabaseDb = {
       bin: biz.bin,
       currency: biz.currency || 'BDT',
       currency_symbol: biz.currencySymbol || '৳',
+      logo_url: biz.logoUrl || null,
+      signature_url: biz.signatureUrl || null,
+      custom_template: biz.customTemplate || null,
       is_default: true,
     };
     const { error } = await supabase.fetchPostgrest(`/businesses`, {
@@ -702,6 +708,9 @@ export const supabaseDb = {
       payment_status: receipt.status || 'Paid',
       template_name: receipt.template || 'Modern Emerald',
       notes: receipt.notes || null,
+      logo_url: receipt.logoUrl || null,
+      signature_url: receipt.signatureUrl || null,
+      custom_template: receipt.customTemplate || null,
       issued_at: new Date().toISOString(),
     };
 
@@ -758,5 +767,8 @@ function mapDbReceiptToModel(r: any): Receipt {
       total: Number(r.total_amount) || 0,
     },
     notes: r.notes || undefined,
+    logoUrl: r.logo_url || undefined,
+    signatureUrl: r.signature_url || undefined,
+    customTemplate: r.custom_template || undefined,
   };
 }
