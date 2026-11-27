@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { StorageService } from '../../lib/storage';
 import { Business, Customer } from '../../lib/types';
 import { formatCurrency } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
+import { UsersIcon } from '../../components/Icons';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -78,40 +80,62 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* Customer Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((c) => (
-            <div
-              key={c.id}
-              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-display font-bold text-sm flex items-center justify-center shrink-0">
-                  {c.name.split(' ').map((n) => n[0]).join('')}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="font-semibold text-sm text-slate-900 truncate">{c.name}</h4>
-                  <p className="text-xs text-slate-500">{c.phone}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {c.receipts} receipts · {c.lastVisit}
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-right shrink-0">
-                <p className="font-display font-bold text-sm text-emerald-700">
-                  {formatCurrency(c.totalSpent, lang === 'bn')}
-                </p>
-                <button
-                  onClick={() => router.push('/new')}
-                  className="mt-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors"
-                >
-                  + New Bill
-                </button>
-              </div>
+        {/* Customer Cards Grid or Empty State */}
+        {filtered.length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/80 shadow-soft max-w-md mx-auto space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <UsersIcon className="w-6 h-6" />
             </div>
-          ))}
-        </div>
+            <h3 className="font-display font-bold text-base text-slate-800">
+              {lang === 'bn' ? 'কোন গ্রাহকের রেকর্ড নেই' : 'No customers recorded yet'}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {lang === 'bn'
+                ? 'রশিদ তৈরি করার সময় গ্রাহকের নাম ও ফোন নম্বর লিখলে স্বয়ংক্রিয়ভাবে এখানে তালিকাভুক্ত হবে।'
+                : 'Customer profiles and lifetime spending are automatically organized here when you issue receipts.'}
+            </p>
+            <Link
+              href="/new"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all"
+            >
+              + Create First Voucher
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-display font-bold text-sm flex items-center justify-center shrink-0">
+                    {c.name.split(' ').map((n) => n[0]).join('')}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-sm text-slate-900 truncate">{c.name}</h4>
+                    <p className="text-xs text-slate-500">{c.phone}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {c.receipts} receipts · {c.lastVisit}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <p className="font-display font-bold text-sm text-emerald-700">
+                    {formatCurrency(c.totalSpent, lang === 'bn')}
+                  </p>
+                  <button
+                    onClick={() => router.push('/new')}
+                    className="mt-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors"
+                  >
+                    + New Bill
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <BottomNav lang={lang} />

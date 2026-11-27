@@ -11,7 +11,7 @@ import { BusinessDrawer } from '../components/BusinessDrawer';
 import { ShareModal } from '../components/ShareModal';
 import { ReceiptPreview } from '../components/ReceiptPreview';
 import { SSLCommerzModal } from '../components/SSLCommerzModal';
-import { CheckIcon, ZapIcon, EyeIcon, ExternalLinkIcon, XIcon } from '../components/Icons';
+import { CheckIcon, ZapIcon, EyeIcon, ExternalLinkIcon, XIcon, ReceiptIcon } from '../components/Icons';
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -45,12 +45,12 @@ export default function DashboardPage() {
   };
 
   const currentBiz = activeBiz || (businesses[0] ?? {
-    id: 'biz_1',
-    name: 'Bengal Gadget Studio',
-    category: 'Electronics & Smart Tech',
-    address: 'House #42, Road #11, Banani, Dhaka-1213',
-    phone: '+880 1711-000000',
-    bin: '002345891-0101',
+    id: 'biz_default',
+    name: 'My Digital Store',
+    category: 'Retail & Commerce',
+    address: 'Dhaka, Bangladesh',
+    phone: '+880 1700-000000',
+    bin: '000000000-0101',
     currency: 'BDT',
     currencySymbol: '৳',
   });
@@ -65,9 +65,14 @@ export default function DashboardPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // KPI aggregates
+  // Dynamic KPI aggregates
   const totalVolume = receipts
     .filter((r) => r.status !== 'Void')
+    .reduce((sum, r) => sum + r.total, 0);
+
+  const todaySales = receipts
+    .filter((r) => r.status !== 'Void')
+    .filter((r) => (r.date || '').includes('Today'))
     .reduce((sum, r) => sum + r.total, 0);
 
   const renderPaymentBadge = (method: string) => {
@@ -150,7 +155,7 @@ export default function DashboardPage() {
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-soft">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today's Sales</p>
             <p className="font-display font-bold text-lg sm:text-2xl text-slate-900 mt-1">
-              {formatCurrency(43820, lang === 'bn')}
+              {formatCurrency(todaySales, lang === 'bn')}
             </p>
             <p className="text-[11px] text-emerald-600 font-medium mt-1">Real-time daily volume</p>
           </div>
@@ -235,54 +240,80 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredReceipts.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4">
-                      <span className="font-mono font-bold text-slate-900 block">#{r.id}</span>
-                      <span className="text-[10px] text-slate-400 capitalize">{r.template.replace('-', ' ')}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-900 block">{r.customerName}</span>
-                      <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
-                    <td className="py-3 px-4">{renderPaymentBadge(r.paymentMethod)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {formatCurrency(r.total, lang === 'bn')}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          r.status === 'Paid'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : r.status === 'Due'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-200 text-slate-600 line-through'
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setPreviewReceipt(r)}
-                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
+                {filteredReceipts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center">
+                      <div className="max-w-xs mx-auto space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                          <ReceiptIcon className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-display font-bold text-sm text-slate-800">
+                          {lang === 'bn' ? 'কোন রশিদ পাওয়া যায়নি' : 'No receipts created yet'}
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          {lang === 'bn'
+                            ? 'কয়েক সেকেন্ডে ডিজিটাল ও থার্মাল ভাউচার তৈরি করতে নতুন রশিদ তৈরি করুন।'
+                            : 'Start issuing branded digital receipts for your customers in <30 seconds.'}
+                        </p>
+                        <Link
+                          href="/new"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
                         >
-                          <EyeIcon className="w-3.5 h-3.5" />
-                          <span>Preview</span>
-                        </button>
-                        <button
-                          onClick={() => setShareReceipt(r)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
-                        >
-                          <span>Share</span>
-                          <ExternalLinkIcon className="w-3.5 h-3.5" />
-                        </button>
+                          + Create First Receipt
+                        </Link>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredReceipts.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-bold text-slate-900 block">#{r.id}</span>
+                        <span className="text-[10px] text-slate-400 capitalize">{r.template.replace('-', ' ')}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-slate-900 block">{r.customerName}</span>
+                        <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
+                      <td className="py-3 px-4">{renderPaymentBadge(r.paymentMethod)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                        {formatCurrency(r.total, lang === 'bn')}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            r.status === 'Paid'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : r.status === 'Due'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-200 text-slate-600 line-through'
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setPreviewReceipt(r)}
+                            className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            onClick={() => setShareReceipt(r)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Share</span>
+                            <ExternalLinkIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

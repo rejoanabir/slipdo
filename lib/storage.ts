@@ -2,15 +2,15 @@ import { Business, Customer, Receipt, LogoLockup, FigmaChecklistItem, ReceiptTot
 import { INITIAL_BUSINESSES, INITIAL_CUSTOMERS, INITIAL_RECEIPTS, FIGMA_CHECKLIST_ITEMS } from './mockData';
 
 const KEYS = {
-  ACTIVE_BIZ: 'slipdo_active_biz_id',
-  BUSINESSES: 'slipdo_businesses',
-  CUSTOMERS: 'slipdo_customers',
-  RECEIPTS: 'slipdo_receipts',
-  CHECKLIST: 'slipdo_checklist',
-  LOGO_LOCKUP: 'slipdo_logo_lockup',
+  ACTIVE_BIZ: 'slipdo_active_biz_v3',
+  BUSINESSES: 'slipdo_businesses_v3',
+  CUSTOMERS: 'slipdo_customers_v3',
+  RECEIPTS: 'slipdo_receipts_v3',
+  CHECKLIST: 'slipdo_checklist_v3',
+  LOGO_LOCKUP: 'slipdo_logo_lockup_v3',
   LANG: 'slipdo_language',
-  AUTH_USER: 'slipdo_auth_user',
-  AUTH_TOKEN: 'slipdo_auth_token',
+  AUTH_USER: 'slipdo_auth_user_v3',
+  AUTH_TOKEN: 'slipdo_auth_token_v3',
 };
 
 export class StorageService {

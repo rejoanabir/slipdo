@@ -26,23 +26,21 @@ export default function ReceiptCreatorPage() {
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
   const [thermalWidth, setThermalWidth] = useState<'58mm' | '80mm'>('58mm');
 
-  // Receipt Draft State
-  const [receiptNo, setReceiptNo] = useState('SD-2026-0843');
+  // Receipt Draft State (Clean slate for real merchants)
+  const [receiptNo, setReceiptNo] = useState(`SD-${new Date().getFullYear()}-${Math.floor(1001 + (StorageService.getReceipts().length))}`);
   const [template, setTemplate] = useState<TemplateId>('modern-emerald');
-  const [customerName, setCustomerName] = useState('Tanvir Ahmed');
-  const [customerPhone, setCustomerPhone] = useState('+880 1712-908123');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bKash');
   const [status, setStatus] = useState<'Paid' | 'Due'>('Paid');
-  const [enableTax, setEnableTax] = useState(true);
+  const [enableTax, setEnableTax] = useState(false);
   const [taxRate, setTaxRate] = useState(5);
-  const [enableDiscount, setEnableDiscount] = useState(true);
-  const [discount, setDiscount] = useState(2500);
-  const [notes, setNotes] = useState('Thank you for shopping with us! Warranty valid with this verified SlipDo receipt.');
+  const [enableDiscount, setEnableDiscount] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [notes, setNotes] = useState('Thank you for shopping with us! Warranty valid with this verified receipt.');
 
   const [items, setItems] = useState<ReceiptItem[]>([
-    { id: 1, desc: 'MacBook Air M3 Sleeve & Hub', descBn: 'ম্যাকবুক এয়ার স্লিভ ও হাব', qty: 2, price: 6500 },
-    { id: 2, desc: 'Keychron K2 Pro Mechanical', descBn: 'কীক্রোন কে২ প্রো কীবোর্ড', qty: 1, price: 11500 },
-    { id: 3, desc: 'Dell UltraSharp 27" 4K Monitor', descBn: 'ডেল আলট্রাশার্প ২৭" ৪কে মনিটর', qty: 1, price: 95481.9 },
+    { id: 1, desc: '', qty: 1, price: 0 },
   ]);
 
   useEffect(() => {
@@ -53,12 +51,12 @@ export default function ReceiptCreatorPage() {
   }, []);
 
   const currentBiz = activeBiz || (businesses[0] ?? {
-    id: 'biz_1',
-    name: 'Bengal Gadget Studio',
-    category: 'Electronics & Smart Tech',
-    address: 'House #42, Road #11, Banani, Dhaka-1213',
-    phone: '+880 1711-000000',
-    bin: '002345891-0101',
+    id: 'biz_default',
+    name: 'My Digital Store',
+    category: 'Retail & Commerce',
+    address: 'Dhaka, Bangladesh',
+    phone: '+880 1700-000000',
+    bin: '000000000-0101',
     currency: 'BDT',
     currencySymbol: '৳',
   });

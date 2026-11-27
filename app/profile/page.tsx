@@ -34,9 +34,9 @@ export default function ProfilePage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // User Profile form state
-  const [merchantName, setMerchantName] = useState('Arif Rahman');
-  const [merchantEmail, setMerchantEmail] = useState('arif.rahman@nextechbd.com');
-  const [merchantPhone, setMerchantPhone] = useState('+880 1711-223344');
+  const [merchantName, setMerchantName] = useState('Store Owner');
+  const [merchantEmail, setMerchantEmail] = useState('merchant@mystore.bd');
+  const [merchantPhone, setMerchantPhone] = useState('+880 1700-000000');
   const [thermalSize, setThermalSize] = useState<'58mm' | '80mm'>('80mm');
   const [autoSms, setAutoSms] = useState(true);
   const [pinProtected, setPinProtected] = useState(true);
@@ -97,7 +97,7 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-display font-extrabold text-xl shadow-md shrink-0">
-                AR
+                {merchantName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'SO'}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
             <div className="text-right sm:text-right w-full sm:w-auto">
               <div className="inline-block px-3 py-1.5 rounded-xl bg-white/10 text-xs font-semibold backdrop-blur-xs">
-                Usage: <span className="font-mono text-emerald-300 font-bold">42</span> / Unlimited Receipts
+                Usage: <span className="font-mono text-emerald-300 font-bold">{StorageService.getReceipts().length}</span> / Unlimited Receipts
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function ProfilePage() {
                 Trade License No.
               </label>
               <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800">
-                TRAD/DNCC/042918/2024
+                {activeBiz.bin ? `TRAD/DNCC/${activeBiz.bin.slice(0, 6)}/2026` : 'Pending Registration'}
               </div>
             </div>
 
@@ -222,7 +222,7 @@ export default function ProfilePage() {
                 BIN / Tax Identifier
               </label>
               <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800">
-                004819204-0102
+                {activeBiz.bin || 'Pending TIN/BIN'}
               </div>
             </div>
 

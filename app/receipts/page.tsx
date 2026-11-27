@@ -10,7 +10,7 @@ import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { ShareModal } from '../../components/ShareModal';
 import { ReceiptPreview } from '../../components/ReceiptPreview';
-import { EyeIcon, ExternalLinkIcon, XIcon } from '../../components/Icons';
+import { EyeIcon, ExternalLinkIcon, XIcon, ReceiptIcon } from '../../components/Icons';
 
 export default function ReceiptsArchivePage() {
   const [mounted, setMounted] = useState(false);
@@ -124,51 +124,77 @@ export default function ReceiptsArchivePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">#{r.id}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-900 block">{r.customerName}</span>
-                      <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
-                    <td className="py-3 px-4 font-bold text-slate-700">{r.paymentMethod}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {formatCurrency(r.total, lang === 'bn')}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          r.status === 'Paid'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : r.status === 'Due'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-200 text-slate-600 line-through'
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setPreviewReceipt(r)}
-                          className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center">
+                      <div className="max-w-xs mx-auto space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                          <ReceiptIcon className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-display font-bold text-sm text-slate-800">
+                          {lang === 'bn' ? 'কোন সংরক্ষিত রশিদ নেই' : 'No vouchers found'}
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          {lang === 'bn'
+                            ? 'আপনি এখনো কোন রশিদ তৈরি করেননি।'
+                            : 'All created payment slips and cash memos will be securely archived here.'}
+                        </p>
+                        <Link
+                          href="/new"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
                         >
-                          <EyeIcon className="w-3.5 h-3.5" />
-                          <span>Preview</span>
-                        </button>
-                        <button
-                          onClick={() => setShareReceipt(r)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
-                        >
-                          <span>Share</span>
-                          <ExternalLinkIcon className="w-3.5 h-3.5" />
-                        </button>
+                          + Create New Receipt
+                        </Link>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">#{r.id}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-slate-900 block">{r.customerName}</span>
+                        <span className="text-[11px] text-slate-500">{r.customerPhone}</span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{r.date}</td>
+                      <td className="py-3 px-4 font-bold text-slate-700">{r.paymentMethod}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                        {formatCurrency(r.total, lang === 'bn')}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            r.status === 'Paid'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : r.status === 'Due'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-200 text-slate-600 line-through'
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setPreviewReceipt(r)}
+                            className="px-2 py-1 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-semibold inline-flex items-center gap-1"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            onClick={() => setShareReceipt(r)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Share</span>
+                            <ExternalLinkIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

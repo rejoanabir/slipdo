@@ -1,195 +1,44 @@
 import { Business, Customer, Receipt, FigmaChecklistItem } from './types';
 
+// Clean initial state - Zero random/fake records
 export const INITIAL_BUSINESSES: Business[] = [
   {
-    id: 'biz_1',
-    name: 'Bengal Gadget Studio',
-    nameBn: 'বেঙ্গল গ্যাজেট স্টুডিও',
-    category: 'Electronics & Smart Tech',
-    categoryBn: 'ইলেকট্রনিক্স ও স্মার্ট টেকনোলজি',
-    address: 'House #42, Road #11, Banani, Dhaka-1213',
-    phone: '+880 1711-000000',
-    bin: '002345891-0101',
-    currency: 'BDT',
-    currencySymbol: '৳',
-  },
-  {
-    id: 'biz_2',
-    name: 'Dacca Heritage Crafts',
-    nameBn: 'ঢাকা হেরিটেজ ক্রাফটস',
-    category: 'Artisanal Apparel & Gifts',
-    categoryBn: 'হস্তশিল্প ও ঐতিহ্যবাহী পোশাক',
-    address: 'House #8, Road #27, Dhanmondi, Dhaka-1209',
-    phone: '+880 1819-223344',
-    bin: '009871234-0202',
-    currency: 'BDT',
-    currencySymbol: '৳',
-  },
-  {
-    id: 'biz_3',
-    name: 'Apex IT Solutions',
-    nameBn: 'অ্যাপেক্স আইটি সলিউশনস',
-    category: 'Software & Freelance Services',
-    categoryBn: 'সফটওয়্যার ও ফ্রিল্যান্স সার্ভিস',
-    address: 'Suite 902, BDBL Bhaban, Karwan Bazar, Dhaka',
-    phone: '+880 1912-778899',
-    bin: '004561239-0303',
+    id: 'biz_default',
+    name: 'My Store',
+    nameBn: 'আমার দোকান',
+    category: 'General Retail & Services',
+    categoryBn: 'খুচরা ব্যবসা ও সেবা',
+    address: 'Dhaka, Bangladesh',
+    phone: '+880 1700-000000',
+    bin: '000000000-0101',
     currency: 'BDT',
     currencySymbol: '৳',
   },
 ];
 
-export const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'cust_1',
-    name: 'Tanvir Ahmed',
-    phone: '+880 1712-908123',
-    email: 'tanvir@dhakamail.bd',
-    totalSpent: 123456.0,
-    receipts: 8,
-    lastVisit: 'Today, 11:20 AM',
-  },
-  {
-    id: 'cust_2',
-    name: 'Nusrat Jahan',
-    phone: '+880 1814-552310',
-    email: 'nusrat.j@studio.bd',
-    totalSpent: 48500.0,
-    receipts: 5,
-    lastVisit: 'Yesterday',
-  },
-  {
-    id: 'cust_3',
-    name: 'Rafiqul Islam',
-    phone: '+880 1911-334455',
-    email: 'rafiq.enterprise@gmail.com',
-    totalSpent: 285400.0,
-    receipts: 14,
-    lastVisit: '24 Nov 2026',
-  },
-  {
-    id: 'cust_4',
-    name: 'Farhana Karim',
-    phone: '+880 1611-778899',
-    email: 'farhana.k@outlook.com',
-    totalSpent: 16250.0,
-    receipts: 3,
-    lastVisit: '21 Nov 2026',
-  },
-];
+export const INITIAL_CUSTOMERS: Customer[] = [];
 
-export const INITIAL_RECEIPTS: Receipt[] = [
-  {
-    id: 'SD-2026-0842',
-    receiptNo: 'SD-2026-0842',
-    token: 'sd_9f8a2c4e',
-    date: '27 Nov 2026, 11:20 AM',
-    customerName: 'Tanvir Ahmed',
-    customerPhone: '+880 1712-908123',
-    paymentMethod: 'bKash',
-    status: 'Paid',
-    template: 'modern-emerald',
-    taxRate: 5,
-    enableTax: true,
-    discount: 2500,
-    enableDiscount: true,
-    items: [
-      { id: 1, desc: 'MacBook Air M3 Sleeve & Hub', descBn: 'ম্যাকবুক এয়ার স্লিভ ও হাব', qty: 2, price: 6500 },
-      { id: 2, desc: 'Keychron K2 Pro Mechanical', descBn: 'কীক্রোন কে২ প্রো কীবোর্ড', qty: 1, price: 11500 },
-      { id: 3, desc: 'Dell UltraSharp 27" 4K Monitor', descBn: 'ডেল আলট্রাশার্প ২৭" ৪কে মনিটর', qty: 1, price: 95481.9 },
-    ],
-    total: 123456.0,
-  },
-  {
-    id: 'SD-2026-0841',
-    receiptNo: 'SD-2026-0841',
-    token: 'sd_4b1d7e20',
-    date: '26 Nov 2026, 06:45 PM',
-    customerName: 'Nusrat Jahan',
-    customerPhone: '+880 1814-552310',
-    paymentMethod: 'Nagad',
-    status: 'Paid',
-    template: 'bangla-memo',
-    taxRate: 0,
-    enableTax: false,
-    discount: 500,
-    enableDiscount: true,
-    items: [
-      { id: 1, desc: 'Logitech MX Master 3S', descBn: 'লজিটেক এমএক্স মাস্টার ৩এস মাউস', qty: 1, price: 13500 },
-      { id: 2, desc: 'USB-C 100W GaN Charger', descBn: 'ইউএসবি-সি ১০০ ওয়াট চার্জার', qty: 2, price: 3250 },
-    ],
-    total: 19500.0,
-  },
-  {
-    id: 'SD-2026-0840',
-    receiptNo: 'SD-2026-0840',
-    token: 'sd_7c3a91f8',
-    date: '25 Nov 2026, 03:10 PM',
-    customerName: 'Rafiqul Islam',
-    customerPhone: '+880 1911-334455',
-    paymentMethod: 'Rocket',
-    status: 'Due',
-    template: 'classic-formal',
-    taxRate: 7.5,
-    enableTax: true,
-    discount: 0,
-    enableDiscount: false,
-    items: [
-      { id: 1, desc: 'MikroTik Enterprise Router', descBn: 'মাইক্রোটিক এন্টারপ্রাইজ রাউটার', qty: 4, price: 18500 },
-      { id: 2, desc: 'Cat6A Shielded Cable Roll (305m)', descBn: 'ক্যাট৬এ কেবল রোল (৩০৫ মিটার)', qty: 2, price: 14200 },
-    ],
-    total: 110080.0,
-  },
-  {
-    id: 'SD-2026-0839',
-    receiptNo: 'SD-2026-0839',
-    token: 'sd_2e6f10b4',
-    date: '24 Nov 2026, 01:05 PM',
-    customerName: 'Farhana Karim',
-    customerPhone: '+880 1611-778899',
-    paymentMethod: 'Cash',
-    status: 'Paid',
-    template: 'thermal-pos',
-    taxRate: 0,
-    enableTax: false,
-    discount: 150,
-    enableDiscount: true,
-    items: [
-      { id: 1, desc: 'Anker Soundcore Earbuds', descBn: 'অ্যাঙ্কার সাউন্ডকোর ইয়ারবাডস', qty: 1, price: 4850 },
-      { id: 2, desc: 'Tempered Glass Screen Guard', descBn: 'টেম্পার্ড গ্লাস স্ক্রিন গার্ড', qty: 2, price: 450 },
-    ],
-    total: 5600.0,
-  },
-];
+export const INITIAL_RECEIPTS: Receipt[] = [];
 
 export const FIGMA_CHECKLIST_ITEMS: FigmaChecklistItem[] = [
-  // Step 1: Design Tokens & Variables
   { id: 'f1', group: 'Step 1 · Design Tokens & Variables', tag: 'Tokens', label: 'Color Variables: Primary Emerald (#059669, 50-900), Slate Neutrals, Semantic Status', done: true },
   { id: 'f2', group: 'Step 1 · Design Tokens & Variables', tag: 'Tokens', label: 'Local MFS Brand Tokens: bKash (#E2136E), Nagad (#F7941D), Rocket (#8C3494) + Cash/Bank', done: true },
   { id: 'f3', group: 'Step 1 · Design Tokens & Variables', tag: 'Type', label: 'Bilingual Typography Scale: Inter / Plus Jakarta Sans + Noto Sans Bengali / Hind Siliguri', done: true },
   { id: 'f4', group: 'Step 1 · Design Tokens & Variables', tag: 'Locale', label: 'South Asian Number Formatting Specs: ৳ 1,23,456.00 (EN) & ১২,৩৪,৫৬৭.০০ (BN)', done: true },
   { id: 'f5', group: 'Step 1 · Design Tokens & Variables', tag: 'Tokens', label: 'Elevation, Shadow & Radius Tokens: Card Soft, Elevated FAB, Modal Backdrop, 8/12/16/24px', done: true },
-
-  // Step 2: Mobile (390px) Component Library & Screens
   { id: 'f6', group: 'Step 2 · Mobile (390px) Components', tag: '390px', label: 'Mobile App Shell: Sticky Header (56px), Business Switcher Drawer, 5-Item Bottom Nav + Center (+) FAB', done: true },
   { id: 'f7', group: 'Step 2 · Mobile (390px) Components', tag: '390px', label: 'Mobile Dashboard: Gradient Store Banner, 2x2 KPI Cards, Search Input, Filter Chips & Voucher List', done: true },
   { id: 'f8', group: 'Step 2 · Mobile (390px) Components', tag: '390px', label: 'Mobile Receipt Creator: Segmented Control ([Edit Details] vs [Live Preview]), Item Rows, VAT/Discount & MFS Chips', done: true },
   { id: 'f9', group: 'Step 2 · Mobile (390px) Components', tag: '390px', label: 'Mobile CRM & Settings: Customer Directory Cards, Free vs Pro Tier Cards & SSLCommerz Bottom Sheet', done: true },
-
-  // Step 3: Desktop (1280px) Responsive Components & Modals
   { id: 'f10', group: 'Step 3 · Desktop (1280px) Components', tag: '1280px', label: 'Desktop App Shell: 256px Left Sidebar with Storefront Switcher, Top Bar & Fluid Content Grid', done: true },
   { id: 'f11', group: 'Step 3 · Desktop (1280px) Components', tag: '1280px', label: 'Desktop Dashboard & Creator: 4-Column KPI Row, Full Voucher Table & 12-Col Split-Screen Editor', done: true },
   { id: 'f12', group: 'Step 3 · Desktop (1280px) Components', tag: 'Modal', label: 'Share & Delivery Modal: 1-Click WhatsApp (wa.me), 58/80mm Thermal & A4 Print Triggers, Link Copier', done: true },
   { id: 'f13', group: 'Step 3 · Desktop (1280px) Components', tag: 'Web', label: 'Public Verification Page (/r/[token]): Cryptographic SHA-256 QR Stamp, Verified Badge & Print/PDF Action', done: true },
-
-  // Step 4: Vector Voucher Layouts (5 Templates)
   { id: 'f14', group: 'Step 4 · Vector Voucher Layouts (5 Templates)', tag: 'Vector', label: 'Template 1 — Modern Emerald: Gradient header branding, crisp card styling & QR verification box', done: true },
   { id: 'f15', group: 'Step 4 · Vector Voucher Layouts (5 Templates)', tag: 'Vector', label: 'Template 2 — বাংলা মেমো / ভাউচার: Authentic Bangladeshi cash memo grid, Bengali numerals & signature lines', done: true },
   { id: 'f16', group: 'Step 4 · Vector Voucher Layouts (5 Templates)', tag: 'Vector', label: 'Template 3 — Classic Formal: Double-bordered corporate invoice with BIN & authorized signatory box', done: true },
   { id: 'f17', group: 'Step 4 · Vector Voucher Layouts (5 Templates)', tag: 'Vector', label: 'Template 4 — Clean Minimalist: Swiss high-whitespace layout, hairline dividers & monospace totals', done: true },
   { id: 'f18', group: 'Step 4 · Vector Voucher Layouts (5 Templates)', tag: 'Vector', label: 'Template 5 — 58mm / 80mm Thermal POS: Monospaced slip roll with dashed dividers & compact QR footer', done: true },
-
-  // Step 5: Icon Assets & Logo Lockup Handoff
   { id: 'f19', group: 'Step 5 · Icon Assets & Logo Lockup', tag: 'Brand', label: 'Finalize Logo Lockup Decision: Digital Voucher + Checkmark vs. Stylized "S" Monogram (Light/Dark)', done: true },
   { id: 'f20', group: 'Step 5 · Icon Assets & Logo Lockup', tag: 'SVG', label: 'Export 24px UI Icon Set (1.75px stroke), MFS Payment Badges, App Store Icons (1024px) & Dev Handoff Specs', done: true },
 ];
