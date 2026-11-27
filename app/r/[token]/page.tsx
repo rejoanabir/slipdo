@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { StorageService } from '../../../lib/storage';
+import { supabaseDb } from '../../../lib/supabase';
 import { Receipt, Business } from '../../../lib/types';
 import { ReceiptPreview } from '../../../components/ReceiptPreview';
 import { QRCodeSVG } from '../../../components/QRCodeSVG';
@@ -13,50 +14,86 @@ export default function PublicVerificationPage() {
   const params = useParams();
   const token = params?.token as string;
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    if (!token) return;
-    const r = StorageService.getReceiptByToken(token);
-    const b = StorageService.getActiveBusiness();
-    setBusiness(b);
-    if (r) {
-      setReceipt(r);
+    if (!token) {
+      setLoading(false);
+      return;
     }
+
+    async function loadReceipt() {
+      setLoading(true);
+      try {
+        // 1. Try fetching from Supabase cloud first
+        const cloudReceipt = await supabaseDb.getReceiptByToken(token);
+        if (cloudReceipt) {
+          setReceipt(cloudReceipt);
+          const localBiz = StorageService.getActiveBusiness();
+          setBusiness(localBiz);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fall back to local storage
+        const localReceipt = StorageService.getReceiptByToken(token);
+        const localBiz = StorageService.getActiveBusiness();
+        setBusiness(localBiz);
+        if (localReceipt) {
+          setReceipt(localReceipt);
+        }
+      } catch (err) {
+        console.error('Error loading digital receipt:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadReceipt();
   }, [token]);
 
   const handlePrint = () => {
     window.print();
   };
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#F1F5F9]"></div>;
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-neutral-500">Verifying Cryptographic Receipt...</p>
+      </div>
+    );
   }
 
-  // Fallback if receipt not found
-  const displayReceipt = receipt || {
-    id: 'SD-2026-0842',
-    receiptNo: 'SD-2026-0842',
-    token: token || 'sd_9f8a2c4e',
-    date: '27 Nov 2026, 11:20 AM',
-    customerName: 'Tanvir Ahmed',
-    customerPhone: '+880 1712-908123',
-    paymentMethod: 'bKash' as const,
-    status: 'Paid' as const,
-    template: 'modern-emerald' as const,
-    taxRate: 5,
-    enableTax: true,
-    discount: 2500,
-    enableDiscount: true,
-    items: [
-      { id: 1, desc: 'MacBook Air M3 Sleeve & Hub', descBn: 'ম্যাকবুক এয়ার স্লিভ ও হাব', qty: 2, price: 6500 },
-      { id: 2, desc: 'Keychron K2 Pro Mechanical', descBn: 'কীক্রোন কে২ প্রো কীবোর্ড', qty: 1, price: 11500 },
-      { id: 3, desc: 'Dell UltraSharp 27" 4K Monitor', descBn: 'ডেল আলট্রাশার্প ২৭" ৪কে মনিটর', qty: 1, price: 95481.9 },
-    ],
-    total: 123456.0,
-  };
+  // If receipt is not found in cloud or local
+  if (!receipt) {
+    return (
+      <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4 font-sans">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-neutral-200 shadow-soft text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+            <ShieldCheckIcon className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-neutral-900">Receipt Not Found</h1>
+            <p className="text-xs text-neutral-500 mt-1">
+              Token <code className="bg-neutral-100 px-1.5 py-0.5 rounded font-mono text-emerald-800">{token || 'unknown'}</code> is invalid or the voucher record has not been published yet.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const currentBiz = business || StorageService.getActiveBusiness();
 
@@ -76,7 +113,7 @@ export default function PublicVerificationPage() {
               </div>
               <h2 className="font-display font-bold text-base leading-tight">Authentic Digital Receipt</h2>
               <p className="font-mono text-[11px] text-emerald-200/90 mt-0.5">
-                SHA-256: 8f4c...{token} · Issued {displayReceipt.date}
+                SHA-256: 8f4c...{token} · Issued {receipt.date}
               </p>
             </div>
           </div>
@@ -94,21 +131,21 @@ export default function PublicVerificationPage() {
         {/* The Rendered Voucher */}
         <div id="printable-receipt-area">
           <ReceiptPreview
-            receipt={displayReceipt}
+            receipt={receipt}
             business={currentBiz}
-            templateId={displayReceipt.template}
+            templateId={receipt.template}
           />
         </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-slate-400 space-y-1 print:hidden pt-4">
-          <p className="flex items-center justify-center gap-1.5">
-            <LockIcon className="w-3.5 h-3.5 text-slate-400" />
-            <span>Authenticity cryptographically signed by SlipDo SHA-256 token</span>
+        {/* Bottom Security Footer */}
+        <div className="text-center py-4 print:hidden space-y-1">
+          <div className="inline-flex items-center gap-1.5 text-xs text-neutral-500 font-medium">
+            <LockIcon className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Secured & Verified via SlipDo Cryptographic Ledger · Bangladesh</span>
+          </div>
+          <p className="text-[11px] text-neutral-400">
+            For billing inquiries or returns, present this QR code or token to {currentBiz.name}.
           </p>
-          <Link href="/" className="text-emerald-700 font-semibold hover:underline">
-            SlipDo — Smart Digital Receipts for Bangladesh
-          </Link>
         </div>
       </div>
     </div>

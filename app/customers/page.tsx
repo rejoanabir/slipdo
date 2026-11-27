@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { StorageService } from '../../lib/storage';
+import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business, Customer } from '../../lib/types';
 import { formatCurrency } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
@@ -26,15 +27,25 @@ export default function CustomersPage() {
     setBusinesses(StorageService.getBusinesses());
     setActiveBiz(StorageService.getActiveBusiness());
     setCustomers(StorageService.getCustomers());
+
+    // Sync with Supabase cloud
+    const session = supabase.getSession();
+    if (session?.user?.id) {
+      supabaseDb.getCustomers(session.user.id).then((cloudCustomers) => {
+        if (cloudCustomers && cloudCustomers.length > 0) {
+          setCustomers(cloudCustomers);
+        }
+      }).catch(console.error);
+    }
   }, []);
 
   const currentBiz = activeBiz || (businesses[0] ?? {
-    id: 'biz_1',
-    name: 'Bengal Gadget Studio',
-    category: 'Electronics & Smart Tech',
-    address: 'House #42, Road #11, Banani, Dhaka-1213',
-    phone: '+880 1711-000000',
-    bin: '002345891-0101',
+    id: 'biz_default',
+    name: 'My Store',
+    category: 'General Retail & Services',
+    address: 'Dhaka, Bangladesh',
+    phone: '+880 1700-000000',
+    bin: '000000000-0101',
     currency: 'BDT',
     currencySymbol: '৳',
   });

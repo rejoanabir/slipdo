@@ -4,6 +4,8 @@
  * Fully compatible with Next.js Client & Server environments.
  */
 
+import { Business, Customer, Receipt, ReceiptItem } from './types';
+
 export interface SupabaseAuthUser {
   id: string;
   email: string;
@@ -260,13 +262,12 @@ export class SupabaseClient {
   }
 
   // --- Session Management in localStorage ---
-  private getSession(): SupabaseSession | null {
+  public getSession(): SupabaseSession | null {
     if (typeof window === 'undefined') return null;
     try {
       const raw = localStorage.getItem(SESSION_STORAGE_KEY);
       if (!raw) return null;
       const parsed: SupabaseSession = JSON.parse(raw);
-      // If token expired, clear
       if (parsed.expires_at && parsed.expires_at < Math.floor(Date.now() / 1000)) {
         localStorage.removeItem(SESSION_STORAGE_KEY);
         return null;
@@ -291,46 +292,37 @@ export class SupabaseClient {
     } catch {}
   }
 
-  // --- PostgREST Database API ---
-  from(tableName: string) {
-    const session = this.getSession();
-    const token = session?.access_token || this.anonKey;
+  // --- PostgREST Query Helper ---
+  async fetchPostgrest(path: string, options: RequestInit = {}): Promise<{ data: any; error: any }> {
+    try {
+      const session = this.getSession();
+      const token = session?.access_token || this.anonKey;
+      const headers: Record<string, string> = {
+        apikey: this.anonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string> || {}),
+      };
 
-    return {
-      select: async (query = '*') => {
-        try {
-          const res = await fetch(`${this.url}/rest/v1/${tableName}?select=${encodeURIComponent(query)}`, {
-            headers: {
-              apikey: this.anonKey,
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          const data = await res.json();
-          return { data: res.ok ? data : null, error: res.ok ? null : data };
-        } catch (err: any) {
-          return { data: null, error: err };
-        }
-      },
+      const res = await fetch(`${this.url}/rest/v1${path}`, {
+        ...options,
+        headers,
+      });
 
-      insert: async (records: Record<string, any> | Record<string, any>[]) => {
-        try {
-          const res = await fetch(`${this.url}/rest/v1/${tableName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: this.anonKey,
-              Authorization: `Bearer ${token}`,
-              Prefer: 'return=representation',
-            },
-            body: JSON.stringify(records),
-          });
-          const data = await res.json();
-          return { data: res.ok ? data : null, error: res.ok ? null : data };
-        } catch (err: any) {
-          return { data: null, error: err };
-        }
-      },
-    };
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        return { data: null, error: errJson };
+      }
+
+      if (res.status === 204) {
+        return { data: null, error: null };
+      }
+
+      const data = await res.json();
+      return { data, error: null };
+    } catch (err: any) {
+      return { data: null, error: { message: err?.message || 'Network request failed' } };
+    }
   }
 
   // --- Health Check / Diagnostic ---
@@ -365,3 +357,148 @@ export class SupabaseClient {
 }
 
 export const supabase = new SupabaseClient();
+
+/**
+ * High-Level Database Service for SlipDo
+ * Synchronizes receipts, customers, businesses, and profiles with Supabase.
+ */
+export const supabaseDb = {
+  // --- Businesses ---
+  async getBusinesses(merchantId: string): Promise<Business[]> {
+    const { data, error } = await supabase.fetchPostgrest(
+      `/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}&order=is_default.desc,created_at.asc`
+    );
+    if (error || !Array.isArray(data)) return [];
+    return data.map((b: any) => ({
+      id: b.id,
+      name: b.name,
+      category: b.category,
+      address: b.address,
+      phone: b.phone || '',
+      bin: b.bin || '',
+      currency: b.currency || 'BDT',
+      currencySymbol: b.currency_symbol || '৳',
+    }));
+  },
+
+  async saveBusiness(biz: Business, merchantId: string): Promise<boolean> {
+    const body = {
+      id: biz.id,
+      merchant_id: merchantId,
+      name: biz.name,
+      category: biz.category,
+      address: biz.address,
+      phone: biz.phone,
+      bin: biz.bin,
+      currency: biz.currency || 'BDT',
+      currency_symbol: biz.currencySymbol || '৳',
+      is_default: true,
+    };
+    const { error } = await supabase.fetchPostgrest(`/businesses`, {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(body),
+    });
+    return !error;
+  },
+
+  // --- Customers ---
+  async getCustomers(merchantId: string): Promise<Customer[]> {
+    const { data, error } = await supabase.fetchPostgrest(
+      `/customers?merchant_id=eq.${encodeURIComponent(merchantId)}&order=total_spent.desc`
+    );
+    if (error || !Array.isArray(data)) return [];
+    return data.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || '',
+      email: c.email || '',
+      totalSpent: Number(c.total_spent) || 0,
+      receipts: c.total_receipts || 0,
+      lastVisit: c.last_visit ? new Date(c.last_visit).toLocaleDateString('en-GB') : 'Recently',
+    }));
+  },
+
+  // --- Receipts ---
+  async getReceipts(merchantId: string): Promise<Receipt[]> {
+    const { data, error } = await supabase.fetchPostgrest(
+      `/receipts?merchant_id=eq.${encodeURIComponent(merchantId)}&order=created_at.desc`
+    );
+    if (error || !Array.isArray(data)) return [];
+    return data.map(mapDbReceiptToModel);
+  },
+
+  async getReceiptByToken(token: string): Promise<Receipt | null> {
+    const { data, error } = await supabase.fetchPostgrest(
+      `/receipts?token=eq.${encodeURIComponent(token)}&limit=1`
+    );
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+    return mapDbReceiptToModel(data[0]);
+  },
+
+  async saveReceipt(receipt: Receipt, merchantId: string, businessId?: string): Promise<boolean> {
+    const body = {
+      token: receipt.token,
+      receipt_number: receipt.receiptNo || receipt.id,
+      merchant_id: merchantId,
+      business_id: businessId || null,
+      customer_name: receipt.customerName || 'Walk-in Customer',
+      customer_phone: receipt.customerPhone || null,
+      items: receipt.items || [],
+      subtotal: receipt.totals?.subtotal || receipt.total,
+      tax_rate: receipt.taxRate || 0,
+      tax_amount: receipt.totals?.taxAmount || 0,
+      discount_amount: receipt.discount || 0,
+      total_amount: receipt.total,
+      paid_amount: receipt.total,
+      change_due: 0,
+      payment_method: receipt.paymentMethod || 'Cash',
+      payment_status: receipt.status || 'Paid',
+      template_name: receipt.template || 'Modern Emerald',
+      notes: receipt.notes || null,
+      issued_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.fetchPostgrest(`/receipts`, {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(body),
+    });
+    return !error;
+  },
+
+  async updateReceiptStatus(receiptId: string, status: 'Paid' | 'Due' | 'Void'): Promise<boolean> {
+    const { error } = await supabase.fetchPostgrest(`/receipts?id=eq.${encodeURIComponent(receiptId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ payment_status: status }),
+    });
+    return !error;
+  },
+};
+
+function mapDbReceiptToModel(r: any): Receipt {
+  return {
+    id: r.id || r.receipt_number,
+    receiptNo: r.receipt_number,
+    token: r.token,
+    date: r.issued_at ? new Date(r.issued_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'Today',
+    customerName: r.customer_name || 'Walk-in Customer',
+    customerPhone: r.customer_phone || '',
+    paymentMethod: r.payment_method || 'Cash',
+    status: r.payment_status || 'Paid',
+    template: (r.template_name?.toLowerCase().replace(/\s+/g, '-') as any) || 'modern-emerald',
+    taxRate: Number(r.tax_rate) || 0,
+    enableTax: Number(r.tax_amount) > 0,
+    discount: Number(r.discount_amount) || 0,
+    enableDiscount: Number(r.discount_amount) > 0,
+    items: Array.isArray(r.items) ? r.items : [],
+    total: Number(r.total_amount) || 0,
+    totals: {
+      subtotal: Number(r.subtotal) || Number(r.total_amount) || 0,
+      taxAmount: Number(r.tax_amount) || 0,
+      discountAmount: Number(r.discount_amount) || 0,
+      total: Number(r.total_amount) || 0,
+    },
+    notes: r.notes || undefined,
+  };
+}

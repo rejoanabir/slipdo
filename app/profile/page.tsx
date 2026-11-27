@@ -7,7 +7,7 @@ import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { StorageService } from '../../lib/storage';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business } from '../../lib/types';
 import {
   UserIcon,
@@ -61,8 +61,21 @@ export default function ProfilePage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeBiz) {
+      const updatedBiz = {
+        ...activeBiz,
+        phone: merchantPhone || activeBiz.phone,
+      };
+      StorageService.saveBusiness(updatedBiz);
+      setActiveBiz(updatedBiz);
+
+      const session = supabase.getSession();
+      if (session?.user?.id) {
+        await supabaseDb.saveBusiness(updatedBiz, session.user.id).catch(console.error);
+      }
+    }
     showToast(lang === 'bn' ? 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে' : 'Profile updated successfully!');
   };
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageService } from '../../lib/storage';
+import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business, Customer, Receipt, ReceiptItem, TemplateId, PaymentMethod } from '../../lib/types';
 import { formatCurrency, calcTotals } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
@@ -117,13 +118,19 @@ export default function ReceiptCreatorPage() {
 
     StorageService.saveReceipt(newReceipt);
     setSavedReceipt(newReceipt);
+
+    // Sync to Supabase cloud if merchant is authenticated
+    const session = supabase.getSession();
+    if (session?.user?.id) {
+      supabaseDb.saveReceipt(newReceipt, session.user.id, currentBiz.id).catch(console.error);
+    }
   };
 
   const currentDraftReceipt: Receipt = {
     id: receiptNo,
     receiptNo,
     token: 'sd_9f8a2c4e',
-    date: '27 Nov 2026',
+    date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
     customerName,
     customerPhone,
     paymentMethod,

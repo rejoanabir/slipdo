@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { StorageService } from '../lib/storage';
+import { supabase, supabaseDb } from '../lib/supabase';
 import { Business, Receipt, PaymentMethod } from '../lib/types';
 import { formatCurrency } from '../lib/format';
 import { Navbar } from '../components/Navbar';
@@ -37,6 +38,23 @@ export default function DashboardPage() {
     setBusinesses(bList);
     setActiveBiz(active);
     setReceipts(rList);
+
+    // Sync with Supabase cloud if merchant session is active
+    const session = supabase.getSession();
+    if (session?.user?.id) {
+      Promise.all([
+        supabaseDb.getReceipts(session.user.id),
+        supabaseDb.getBusinesses(session.user.id),
+      ]).then(([cloudReceipts, cloudBusinesses]) => {
+        if (cloudReceipts && cloudReceipts.length > 0) {
+          setReceipts(cloudReceipts);
+        }
+        if (cloudBusinesses && cloudBusinesses.length > 0) {
+          setBusinesses(cloudBusinesses);
+          setActiveBiz(cloudBusinesses[0]);
+        }
+      }).catch(console.error);
+    }
   }, []);
 
   const showToast = (msg: string) => {
