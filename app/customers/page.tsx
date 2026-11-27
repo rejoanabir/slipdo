@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { StorageService } from '../../lib/storage';
 import { supabase, supabaseDb } from '../../lib/supabase';
-import { Business, Customer } from '../../lib/types';
+import { Business, Customer, Receipt } from '../../lib/types';
 import { formatCurrency } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
-import { UsersIcon } from '../../components/Icons';
+import { ReceiptPreview } from '../../components/ReceiptPreview';
+import { UsersIcon, XIcon, ReceiptIcon, EyeIcon, PrinterIcon, PlusIcon } from '../../components/Icons';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -19,21 +20,31 @@ export default function CustomersPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [search, setSearch] = useState('');
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [previewReceipt, setPreviewReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setBusinesses(StorageService.getBusinesses());
     setActiveBiz(StorageService.getActiveBusiness());
     setCustomers(StorageService.getCustomers());
+    setReceipts(StorageService.getReceipts());
 
     // Sync with Supabase cloud
     const session = supabase.getSession();
     if (session?.user?.id) {
-      supabaseDb.getCustomers(session.user.id).then((cloudCustomers) => {
+      Promise.all([
+        supabaseDb.getCustomers(session.user.id),
+        supabaseDb.getReceipts(session.user.id),
+      ]).then(([cloudCustomers, cloudReceipts]) => {
         if (cloudCustomers && cloudCustomers.length > 0) {
           setCustomers(cloudCustomers);
+        }
+        if (cloudReceipts && cloudReceipts.length > 0) {
+          setReceipts(cloudReceipts);
         }
       }).catch(console.error);
     }
@@ -58,6 +69,14 @@ export default function CustomersPage() {
       c.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const customerReceipts = selectedCustomer
+    ? receipts.filter(
+        (r) =>
+          (selectedCustomer.phone && r.customerPhone === selectedCustomer.phone) ||
+          r.customerName.toLowerCase() === selectedCustomer.name.toLowerCase()
+      )
+    : [];
+
   if (!mounted) {
     return <div className="min-h-screen bg-[#F1F5F9]"></div>;
   }
@@ -71,12 +90,16 @@ export default function CustomersPage() {
         onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
+      <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="font-display font-bold text-xl text-slate-900">Customer Directory</h2>
+            <h2 className="font-display font-bold text-xl sm:text-2xl text-slate-900">
+              {lang === 'bn' ? 'গ্রাহক ডিরেক্টরি' : 'Customer Directory'}
+            </h2>
             <p className="text-xs text-slate-500">
-              CRM profiles with lifetime South Asian BDT spend
+              {lang === 'bn'
+                ? 'আজীবন লেনদেন ও ভাউচার হিস্ট্রি সহ সিআরএম প্রোফাইল'
+                : 'CRM profiles with lifetime spend & transaction histories'}
             </p>
           </div>
           <div className="sm:w-64">
@@ -84,9 +107,9 @@ export default function CustomersPage() {
               type="text"
               value={search}
               suppressHydrationWarning
-              placeholder="Search customer..."
+              placeholder="Search customer by name or phone..."
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs focus:outline-hidden focus:border-emerald-500 shadow-2xs"
             />
           </div>
         </div>
@@ -107,47 +130,156 @@ export default function CustomersPage() {
             </p>
             <Link
               href="/new"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
             >
               + Create First Voucher
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filtered.map((c) => (
               <div
                 key={c.id}
-                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft flex items-center justify-between gap-3"
+                onClick={() => setSelectedCustomer(c)}
+                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft flex items-center justify-between gap-3 hover:border-emerald-500/50 hover:shadow-md cursor-pointer transition-all group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-display font-bold text-sm flex items-center justify-center shrink-0">
-                    {c.name.split(' ').map((n) => n[0]).join('')}
+                  <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-display font-bold text-sm flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    {c.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'CU'}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-semibold text-sm text-slate-900 truncate">{c.name}</h4>
-                    <p className="text-xs text-slate-500">{c.phone}</p>
+                    <h4 className="font-semibold text-sm text-slate-900 truncate group-hover:text-emerald-800 transition-colors">
+                      {c.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-mono">{c.phone}</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {c.receipts} receipts · {c.lastVisit}
+                      {c.receipts} vouchers · {c.lastVisit}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <p className="font-display font-bold text-sm text-emerald-700">
+                  <p className="font-display font-bold text-sm text-emerald-700 font-mono">
                     {formatCurrency(c.totalSpent, lang === 'bn')}
                   </p>
-                  <button
-                    onClick={() => router.push('/new')}
-                    className="mt-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors"
-                  >
-                    + New Bill
-                  </button>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full inline-block mt-1">
+                    History →
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Customer Activity History Modal */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-display font-bold text-sm flex items-center justify-center shrink-0">
+                  {selectedCustomer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-sm text-slate-900">{selectedCustomer.name}</h3>
+                  <p className="text-xs text-slate-500">{selectedCustomer.phone} {selectedCustomer.email && `· ${selectedCustomer.email}`}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 p-4 bg-emerald-50/50 border-b border-emerald-100 text-center">
+              <div className="border-r border-emerald-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Total Spent</span>
+                <p className="font-display font-bold text-base text-emerald-950 font-mono">{formatCurrency(selectedCustomer.totalSpent, false)}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Vouchers Issued</span>
+                <p className="font-display font-bold text-base text-emerald-950 font-mono">{selectedCustomer.receipts}</p>
+              </div>
+            </div>
+
+            {/* Receipts List */}
+            <div className="p-4 overflow-y-auto space-y-2.5 flex-1 thin-scroll">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Issued Invoices & Memos</h4>
+              {customerReceipts.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                  No vouchers recorded for this customer in local cache.
+                </div>
+              ) : (
+                customerReceipts.map((r) => (
+                  <div key={r.id} className="p-3 rounded-xl border border-slate-200 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-slate-900">#{r.receiptNo || r.id}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          r.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {r.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{r.date} · {r.paymentMethod}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-slate-900">{formatCurrency(r.total, false)}</span>
+                      <button
+                        onClick={() => setPreviewReceipt(r)}
+                        className="p-1 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                        title="View Voucher"
+                      >
+                        <EyeIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+              <span className="text-xs text-slate-500">Customer ID: {selectedCustomer.id}</span>
+              <button
+                onClick={() => {
+                  setSelectedCustomer(null);
+                  router.push('/new');
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                + Issue New Voucher
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewReceipt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="max-w-lg w-full space-y-3">
+            <div className="flex items-center justify-between text-white px-1">
+              <span className="font-bold text-sm">Voucher #{previewReceipt.receiptNo || previewReceipt.id}</span>
+              <button
+                onClick={() => setPreviewReceipt(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div id="printable-receipt-area">
+              <ReceiptPreview receipt={previewReceipt} business={currentBiz} templateId={previewReceipt.template} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav lang={lang} />
 
@@ -159,6 +291,13 @@ export default function CustomersPage() {
         onSelectBusiness={(b) => {
           setActiveBiz(b);
           StorageService.setActiveBusiness(b.id);
+        }}
+        onAddBusiness={(newBiz) => {
+          const updated = [...businesses, newBiz];
+          setBusinesses(updated);
+          setActiveBiz(newBiz);
+          StorageService.saveBusiness(newBiz);
+          StorageService.setActiveBusiness(newBiz.id);
         }}
         lang={lang}
       />

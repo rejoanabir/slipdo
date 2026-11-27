@@ -468,6 +468,13 @@ export default function ReceiptCreatorPage() {
           setActiveBiz(b);
           StorageService.setActiveBusiness(b.id);
         }}
+        onAddBusiness={(newBiz) => {
+          const updated = [...businesses, newBiz];
+          setBusinesses(updated);
+          setActiveBiz(newBiz);
+          StorageService.saveBusiness(newBiz);
+          StorageService.setActiveBusiness(newBiz.id);
+        }}
         lang={lang}
       />
 

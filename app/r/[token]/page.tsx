@@ -96,6 +96,10 @@ export default function PublicVerificationPage() {
   }
 
   const currentBiz = business || StorageService.getActiveBusiness();
+  const publicUrl =
+    typeof window !== 'undefined' && window.location.origin
+      ? `${window.location.origin}/r/${token}`
+      : `https://slipdo.app/r/${token}`;
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] py-6 sm:py-10 px-4 font-sans">
@@ -104,7 +108,7 @@ export default function PublicVerificationPage() {
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-soft print:hidden">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white rounded-xl shrink-0">
-              <QRCodeSVG value={`https://slipdo.app/r/${token}`} size={48} />
+              <QRCodeSVG value={publicUrl} size={48} />
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[10px] font-bold mb-1">

@@ -31,8 +31,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   if (!isOpen) return null;
 
+  const baseUrl =
+    typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL || 'https://slipdo.app';
   const token = receipt.token || 'sd_9f8a2c4e';
-  const publicUrl = `https://slipdo.app/r/${token}`;
+  const publicUrl = `${baseUrl}/r/${token}`;
 
   // WhatsApp click-to-chat formatted message
   const getWhatsAppMessage = () => {

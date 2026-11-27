@@ -493,6 +493,14 @@ export default function ProfilePage() {
           StorageService.setActiveBusiness(b.id);
           showToast(`Switched storefront to ${b.name}`);
         }}
+        onAddBusiness={(newBiz) => {
+          const updated = [...businesses, newBiz];
+          setBusinesses(updated);
+          setActiveBiz(newBiz);
+          StorageService.saveBusiness(newBiz);
+          StorageService.setActiveBusiness(newBiz.id);
+          showToast(`New branch "${newBiz.name}" created!`);
+        }}
         lang={lang}
       />
     </div>

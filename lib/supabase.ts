@@ -474,6 +474,13 @@ export const supabaseDb = {
     });
     return !error;
   },
+
+  async deleteReceipt(receiptId: string): Promise<boolean> {
+    const { error } = await supabase.fetchPostgrest(`/receipts?id=eq.${encodeURIComponent(receiptId)}`, {
+      method: 'DELETE',
+    });
+    return !error;
+  },
 };
 
 function mapDbReceiptToModel(r: any): Receipt {

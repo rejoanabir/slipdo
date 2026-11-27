@@ -151,6 +151,27 @@ export class StorageService {
     return receipt;
   }
 
+  static deleteReceipt(id: string): Receipt[] {
+    const list = this.getReceipts().filter((r) => r.id !== id && r.receiptNo !== id);
+    if (this.isClient()) {
+      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
+    }
+    return list;
+  }
+
+  static updateReceiptStatus(id: string, status: 'Paid' | 'Due' | 'Void'): Receipt | null {
+    const list = this.getReceipts();
+    const target = list.find((r) => r.id === id || r.receiptNo === id);
+    if (target) {
+      target.status = status;
+      if (this.isClient()) {
+        localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
+      }
+      return target;
+    }
+    return null;
+  }
+
   static getLogoLockup(): LogoLockup {
     if (!this.isClient()) return 'voucher-check';
     try {

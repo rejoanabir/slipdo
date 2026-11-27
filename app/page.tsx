@@ -351,6 +351,14 @@ export default function DashboardPage() {
           StorageService.setActiveBusiness(biz.id);
           showToast(`Switched storefront to ${biz.name}`);
         }}
+        onAddBusiness={(newBiz) => {
+          const updated = [...businesses, newBiz];
+          setBusinesses(updated);
+          setActiveBiz(newBiz);
+          StorageService.saveBusiness(newBiz);
+          StorageService.setActiveBusiness(newBiz.id);
+          showToast(`New branch "${newBiz.name}" created!`);
+        }}
         lang={lang}
       />
 

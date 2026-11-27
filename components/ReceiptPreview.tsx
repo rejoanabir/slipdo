@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Business, Receipt, TemplateId } from '../lib/types';
-import { formatCurrency, toBengaliDigits } from '../lib/format';
+import { formatCurrency, toBengaliDigits, numberToWordsEn, numberToWordsBn } from '../lib/format';
 import { QRCodeSVG } from './QRCodeSVG';
 import { SlipDoLogo } from './SlipDoLogo';
 
@@ -55,7 +55,15 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
         <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <SlipDoLogo size={36} />
+              {business.logoUrl ? (
+                <img
+                  src={business.logoUrl}
+                  alt={business.name}
+                  className="h-9 w-auto max-w-[120px] object-contain rounded-lg bg-white/90 p-1 shrink-0"
+                />
+              ) : (
+                <SlipDoLogo size={36} />
+              )}
               <div>
                 <h4 className="font-display font-bold text-base sm:text-lg leading-tight tracking-tight text-white">{business.name}</h4>
                 <p className="text-[11px] text-emerald-100/90 mt-0.5">{business.category}</p>
@@ -223,6 +231,11 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
           </tfoot>
         </table>
 
+        {/* In Words / কথায় */}
+        <div className="mt-3 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-lg text-xs font-semibold text-emerald-900">
+          {numberToWordsBn(total)}
+        </div>
+
         <div className="flex items-end justify-between pt-4 mt-2 text-xs">
           <div className="text-center">
             <div className="w-24 border-t border-slate-400 pt-1 text-slate-600">ক্রেতার স্বাক্ষর</div>
@@ -286,6 +299,11 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
           </tbody>
         </table>
 
+        {/* In Words */}
+        <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
+          <strong className="font-bold text-slate-900">In Words:</strong> {numberToWordsEn(total)}
+        </div>
+
         <div className="flex items-end justify-between pt-2">
           <div className="flex items-center gap-2">
             <QRCodeSVG value={`https://slipdo.app/r/${token}`} size={44} />
@@ -310,9 +328,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
     return (
       <div className="receipt-paper bg-white rounded-xl border border-slate-200 p-6 sm:p-7 text-slate-900 shadow-soft">
         <div className="flex items-baseline justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-1">Receipt</p>
-            <h4 className="font-display font-bold text-xl tracking-tight">{business.name}</h4>
+          <div className="flex items-center gap-3">
+            {business.logoUrl && (
+              <img src={business.logoUrl} alt={business.name} className="h-9 w-auto max-w-[120px] object-contain rounded shrink-0" />
+            )}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-1">Receipt</p>
+              <h4 className="font-display font-bold text-xl tracking-tight">{business.name}</h4>
+            </div>
           </div>
           <span className="font-mono text-xs text-slate-400">#{receipt.receiptNo || receipt.id}</span>
         </div>
