@@ -327,7 +327,7 @@ export default function SettingsPage() {
 
   const currentBiz = activeBiz || (businesses[0] ?? {
     id: 'biz_default',
-    name: 'My Store',
+    name: 'Merchant Store',
     category: 'General Retail & Services',
     address: 'Dhaka, Bangladesh',
     phone: '+880 1700-000000',

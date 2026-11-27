@@ -4,11 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { StorageService } from '../../lib/storage';
 import { supabase, supabaseDb } from '../../lib/supabase';
-import { Business, Currency } from '../../lib/types';
-import { CountryCodeSelect } from '../../components/CountryCodeSelect';
+import { Business } from '../../lib/types';
 import { SlipDoLogo } from '../../components/SlipDoLogo';
 import {
-  SparklesIcon,
   MailIcon,
   EyeIcon,
   EyeOffIcon,
@@ -20,17 +18,7 @@ import {
   XIcon,
 } from '../../components/Icons';
 
-type AuthMode = 'signin' | 'signup' | 'forgot' | 'otp_verify' | 'step3_store';
-
-const CATEGORIES = [
-  'General Retail & Services',
-  'Fashion & Clothing',
-  'Electronics & Tech',
-  'Grocery & Super Shop',
-  'Restaurant & Cafe',
-  'Pharmacy & Healthcare',
-  'Wholesale & Distribution',
-];
+type AuthMode = 'signin' | 'signup' | 'forgot' | 'otp_verify';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +27,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Form Fields (Step 1 & 2)
+  // Form Fields
+  const [storeName, setStoreName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,17 +45,6 @@ export default function LoginPage() {
   // Security: Progressive attempt throttling
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
-
-  // Step 3 Storefront Setup Fields
-  const [storeName, setStoreName] = useState('');
-  const [storeCategory, setStoreCategory] = useState(CATEGORIES[0]);
-  const [storeCountryCode, setStoreCountryCode] = useState('BD'); // Default BD
-  const [storePhone, setStorePhone] = useState('');
-  const [storeAddress, setStoreAddress] = useState('');
-  const [storeCurrency, setStoreCurrency] = useState<Currency>('BDT');
-  const [storeBin, setStoreBin] = useState('');
-  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(null);
-  const [storeSignatureUrl, setStoreSignatureUrl] = useState<string | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -95,49 +73,42 @@ export default function LoginPage() {
       try {
         const pendingVerify = typeof window !== 'undefined' ? sessionStorage.getItem('slipdo_pending_otp') : null;
         const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const isStep3Requested = urlParams?.get('step') === '3';
         const isVerifyStep = urlParams?.get('step') === 'verify' || !!pendingVerify;
 
         const session = (await supabase.handleAuthCallback()) || supabase.getSession();
         if (session?.user?.id) {
           const uid = session.user.id;
-          if (isStep3Requested) {
-            setAuthMode('step3_store');
-            return;
-          }
-
-          // Check if this user already has an active store
           const cloudBusinesses = await supabaseDb.getBusinesses(uid);
           const userMeta = session.user?.user_metadata;
-          const isAlreadyConfigured =
-            (cloudBusinesses && cloudBusinesses.length > 0) ||
-            userMeta?.store_setup_completed === true ||
-            !!userMeta?.default_business ||
-            StorageService.isStoreSetupCompleted(uid) ||
-            StorageService.getBusinesses().length > 0;
-
-          if (!isAlreadyConfigured) {
-            setAuthMode('step3_store');
-            if (typeof window !== 'undefined') {
-              window.history.replaceState(null, '', '/login?step=3');
-            }
-          } else {
-            let activeList = cloudBusinesses || [];
-            if (activeList.length === 0 && userMeta?.default_business) {
-              activeList = [userMeta.default_business];
-            }
-            if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
-              activeList = StorageService.getBusinesses();
-            }
-            if (activeList.length > 0) {
-              StorageService.setCloudBusinesses(uid, activeList);
-            }
-            StorageService.markStoreSetupCompleted(uid);
-            showToast('Signed in successfully!');
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 300);
+          let activeList = cloudBusinesses || [];
+          if (activeList.length === 0 && userMeta?.default_business) {
+            activeList = [userMeta.default_business];
           }
+          if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
+            activeList = StorageService.getBusinesses();
+          }
+          if (activeList.length === 0) {
+            const bizName = userMeta?.name || userMeta?.full_name || (session.user.email ? session.user.email.split('@')[0] : 'Merchant Store');
+            const defaultBiz: Business = {
+              id: 'biz_' + Date.now().toString(36),
+              name: bizName,
+              category: 'General Retail & Services',
+              address: 'Online Store',
+              phone: session.user.phone || '',
+              bin: '',
+              currency: 'BDT',
+              currencySymbol: '৳',
+            };
+            StorageService.saveBusiness(defaultBiz);
+            StorageService.setActiveBusiness(defaultBiz.id);
+            activeList = [defaultBiz];
+            supabaseDb.saveBusiness(defaultBiz, uid).catch(console.warn);
+          }
+          StorageService.setCloudBusinesses(uid, activeList);
+          StorageService.markStoreSetupCompleted(uid);
+          showToast('Signed in successfully!');
+          window.location.href = '/';
+          return;
         } else if (isVerifyStep) {
           let emailToVerify = urlParams?.get('email') || '';
           let notice = '';
@@ -155,8 +126,6 @@ export default function LoginPage() {
             setTimeout(() => otpInputRefs.current[0]?.focus(), 200);
             return;
           }
-        } else if (isStep3Requested) {
-          setAuthMode('step3_store');
         }
       } catch (err) {
         console.error('Redirect auth handling error:', err);
@@ -244,49 +213,37 @@ export default function LoginPage() {
       const userMeta = res.data?.session?.user?.user_metadata;
       if (uid) {
         const cloudBusinesses = await supabaseDb.getBusinesses(uid);
-        const isAlreadyConfigured =
-          (cloudBusinesses && cloudBusinesses.length > 0) ||
-          userMeta?.store_setup_completed === true ||
-          !!userMeta?.default_business ||
-          StorageService.isStoreSetupCompleted(uid) ||
-          StorageService.getBusinesses().length > 0;
-
-        if (!isAlreadyConfigured) {
-          setAuthMode('step3_store');
-          if (typeof window !== 'undefined') {
-            window.history.replaceState(null, '', '/login?step=3');
-          }
-        } else {
-          let activeList = cloudBusinesses || [];
-          if (activeList.length === 0 && userMeta?.default_business) {
-            activeList = [userMeta.default_business];
-          }
-          if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
-            activeList = StorageService.getBusinesses();
-          }
-          if (activeList.length > 0) {
-            StorageService.setCloudBusinesses(uid, activeList);
-          }
-          StorageService.markStoreSetupCompleted(uid);
-          showToast('Signed in successfully!');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 300);
+        let activeList = cloudBusinesses || [];
+        if (activeList.length === 0 && userMeta?.default_business) {
+          activeList = [userMeta.default_business];
         }
-      } else {
-        const existing = StorageService.getBusinesses();
-        if (!existing || existing.length === 0) {
-          setAuthMode('step3_store');
-          if (typeof window !== 'undefined') {
-            window.history.replaceState(null, '', '/login?step=3');
-          }
-        } else {
-          showToast('Signed in successfully!');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 300);
+        if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
+          activeList = StorageService.getBusinesses();
         }
+        if (activeList.length === 0) {
+          const bizName = userMeta?.name || userMeta?.full_name || cleanEmail.split('@')[0] || 'Merchant Store';
+          const defaultBiz: Business = {
+            id: 'biz_' + Date.now().toString(36),
+            name: bizName,
+            category: 'General Retail & Services',
+            address: 'Online Store',
+            phone: '',
+            bin: '',
+            currency: 'BDT',
+            currencySymbol: '৳',
+          };
+          StorageService.saveBusiness(defaultBiz);
+          StorageService.setActiveBusiness(defaultBiz.id);
+          activeList = [defaultBiz];
+          supabaseDb.saveBusiness(defaultBiz, uid).catch(console.warn);
+        }
+        StorageService.setCloudBusinesses(uid, activeList);
+        StorageService.markStoreSetupCompleted(uid);
       }
+      showToast('Signed in successfully!');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 250);
     } catch (err: any) {
       showToast(err?.message || 'Authentication error occurred', 'error');
     } finally {
@@ -329,11 +286,28 @@ export default function LoginPage() {
 
       // If email confirmation is disabled and session returned immediately:
       if (res.data?.session) {
-        showToast('Account registered! Now set up your storefront.');
-        setAuthMode('step3_store');
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(null, '', '/login?step=3');
-        }
+        const uid = res.data.session.user.id;
+        const bizName = storeName.trim() || cleanEmail.split('@')[0] || 'Merchant Store';
+        const defaultBiz: Business = {
+          id: 'biz_' + Date.now().toString(36),
+          name: bizName,
+          category: 'General Retail & Services',
+          address: 'Online Store',
+          phone: '',
+          bin: '',
+          currency: 'BDT',
+          currencySymbol: '৳',
+        };
+        StorageService.saveBusiness(defaultBiz);
+        StorageService.setActiveBusiness(defaultBiz.id);
+        StorageService.setCloudBusinesses(uid, [defaultBiz]);
+        StorageService.markStoreSetupCompleted(uid);
+        supabaseDb.saveBusiness(defaultBiz, uid).catch(console.warn);
+
+        showToast('Account registered successfully! Welcome to SlipDo.');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 250);
         return;
       }
 
@@ -345,6 +319,9 @@ export default function LoginPage() {
       setResendCountdown(60);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('slipdo_pending_otp', JSON.stringify({ email: cleanEmail, notice }));
+        if (storeName.trim()) {
+          sessionStorage.setItem('slipdo_pending_store_name', storeName.trim());
+        }
         window.history.replaceState(null, '', `/login?step=verify&email=${encodeURIComponent(cleanEmail)}`);
       }
       setTimeout(() => otpInputRefs.current[0]?.focus(), 150);
@@ -412,12 +389,36 @@ export default function LoginPage() {
         return;
       }
 
-      showToast('Identity confirmed! Please configure your storefront.');
-      setAuthMode('step3_store');
+      const uid = res.data?.session?.user?.id;
+      const savedStoreName = typeof window !== 'undefined' ? sessionStorage.getItem('slipdo_pending_store_name') : null;
+      const bizName = savedStoreName?.trim() || storeName.trim() || cleanEmail.split('@')[0] || 'Merchant Store';
+      const defaultBiz: Business = {
+        id: 'biz_' + Date.now().toString(36),
+        name: bizName,
+        category: 'General Retail & Services',
+        address: 'Online Store',
+        phone: '',
+        bin: '',
+        currency: 'BDT',
+        currencySymbol: '৳',
+      };
+      StorageService.saveBusiness(defaultBiz);
+      StorageService.setActiveBusiness(defaultBiz.id);
+      if (uid) {
+        StorageService.setCloudBusinesses(uid, [defaultBiz]);
+        StorageService.markStoreSetupCompleted(uid);
+        supabaseDb.saveBusiness(defaultBiz, uid).catch(console.warn);
+      }
+
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('slipdo_pending_otp');
-        window.history.replaceState(null, '', '/login?step=3');
+        sessionStorage.removeItem('slipdo_pending_store_name');
       }
+
+      showToast('Identity confirmed! Welcome to SlipDo.');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 250);
     } catch (err: any) {
       showToast(err?.message || 'Verification error', 'error');
       setLoading(false);
@@ -488,101 +489,6 @@ export default function LoginPage() {
     }
   };
 
-  // Logo File Upload Handler
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Logo file size must be under 2MB', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setStoreLogoUrl(ev.target?.result as string);
-      showToast('Store logo uploaded!');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Signature File Upload Handler
-  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Signature file size must be under 2MB', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setStoreSignatureUrl(ev.target?.result as string);
-      showToast('Digital signature uploaded!');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // --- Step 3 Storefront Setup Submission ---
-  const handleStep3Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeName.trim()) {
-      showToast('Please enter your store or business name', 'error');
-      return;
-    }
-
-    setLoading(true);
-
-    const prefixMap: Record<string, string> = {
-      BD: '+880',
-      US: '+1',
-      GB: '+44',
-      IN: '+91',
-      AE: '+971',
-      SA: '+966',
-      SG: '+65',
-      MY: '+60',
-      PK: '+92',
-      CA: '+1',
-      AU: '+61',
-    };
-    const codePrefix = prefixMap[storeCountryCode] || '+880';
-    const cleanNum = storePhone.replace(/^[+\d\s-]+/, (m) => (m.startsWith('+') ? '' : m)).trim();
-    const fullPhone = cleanNum ? `${codePrefix} ${cleanNum}` : '';
-    const cleanAddress = storeAddress.trim() || 'Online Store';
-
-    const newBusiness: Business = {
-      id: 'biz_' + Date.now(),
-      name: storeName.trim(),
-      category: storeCategory,
-      address: cleanAddress,
-      phone: fullPhone,
-      bin: storeBin.trim(),
-      currency: storeCurrency,
-      currencySymbol: storeCurrency === 'USD' ? '$' : storeCurrency === 'EUR' ? '€' : storeCurrency === 'INR' ? '₹' : '৳',
-      logoUrl: storeLogoUrl || undefined,
-      signatureUrl: storeSignatureUrl || undefined,
-    };
-
-    try {
-      // 1. Save to user-scoped local storage immediately
-      StorageService.saveBusiness(newBusiness);
-      StorageService.setActiveBusiness(newBusiness.id);
-
-      // 2. Save to Supabase cloud and user_metadata in background without blocking UI
-      const session = supabase.getSession();
-      if (session?.user?.id) {
-        const uid = session.user.id;
-        StorageService.setCloudBusinesses(uid, [newBusiness]);
-        StorageService.markStoreSetupCompleted(uid);
-        supabaseDb.saveBusiness(newBusiness, uid).catch(console.warn);
-      }
-
-      showToast('Storefront configured successfully! Welcome to SlipDo.');
-      window.location.href = '/';
-    } catch (err: any) {
-      showToast(err?.message || 'Error saving storefront details', 'error');
-      setLoading(false);
-    }
-  };
-
   if (!mounted) {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
@@ -620,57 +526,29 @@ export default function LoginPage() {
 
       {/* Main Card Container */}
       <main className="w-full max-w-[390px] sm:max-w-[420px] mx-auto py-6">
-        {/* Brand Header: Different Logo on Step 3 as requested */}
-        {authMode === 'step3_store' ? (
-          <div className="flex flex-col items-center justify-center text-center mb-6">
-            <div className="relative mb-3">
-              {storeLogoUrl ? (
-                <img
-                  src={storeLogoUrl}
-                  alt="Store Logo"
-                  className="w-16 h-16 rounded-3xl object-contain p-1.5 bg-white border border-slate-200 shadow-md shadow-blue-500/10"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#1e40af] to-[#3b82f6] text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
-                  <BuildingIcon className="w-8 h-8 text-white" />
-                </div>
-              )}
-              <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-slate-900 text-white text-[9px] font-bold tracking-wider uppercase border-2 border-white shadow-2xs">
-                Outlet
-              </span>
-            </div>
+        <div>
+          <div className="flex items-center justify-center gap-2.5 mb-5">
+            <SlipDoLogo size={42} lockup="official" />
+            <span className="text-2xl font-black tracking-tight text-slate-900">SlipDo</span>
+          </div>
+
+          <div className="text-center mb-6">
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Setup Your Storefront
+              {authMode === 'signup'
+                ? 'Create an Account'
+                : authMode === 'otp_verify'
+                ? 'Enter Verification Code'
+                : 'Welcome Back Creative!'}
             </h1>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              Step 3 of 3: Configure branding & digital receipts
+              {authMode === 'signup'
+                ? 'Start issuing digital receipts in seconds'
+                : authMode === 'otp_verify'
+                ? verificationNotice || 'Verify code to access your merchant account'
+                : 'We Are Happy To See You Again'}
             </p>
           </div>
-        ) : (
-          <div>
-            <div className="flex items-center justify-center gap-2.5 mb-5">
-              <SlipDoLogo size={42} lockup="official" />
-              <span className="text-2xl font-black tracking-tight text-slate-900">SlipDo</span>
-            </div>
-
-            <div className="text-center mb-6">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                {authMode === 'signup'
-                  ? 'Create an Account'
-                  : authMode === 'otp_verify'
-                  ? 'Enter Verification Code'
-                  : 'Welcome Back Creative!'}
-              </h1>
-              <p className="text-xs text-slate-400 font-medium mt-1">
-                {authMode === 'signup'
-                  ? 'Start issuing digital receipts in seconds'
-                  : authMode === 'otp_verify'
-                  ? verificationNotice || 'Verify code to access your merchant account'
-                  : 'We Are Happy To See You Again'}
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* ================= MODE: SIGN IN / SIGN UP ================= */}
         {(authMode === 'signin' || authMode === 'signup') && (
@@ -703,6 +581,22 @@ export default function LoginPage() {
 
             {/* Input Form */}
             <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-3.5">
+              {/* Store / Business Name (Sign Up Mode) */}
+              {authMode === 'signup' && (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    placeholder="Store / Business Name (Optional)"
+                    className="w-full pl-5 pr-12 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 p-1 flex items-center justify-center">
+                    <BuildingIcon className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              )}
+
               {/* Email Input */}
               <div className="relative">
                 <input
@@ -896,183 +790,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-        )}
-
-        {/* ================= MODE: STEP 3 STOREFRONT SETUP ================= */}
-        {authMode === 'step3_store' && (
-          <form onSubmit={handleStep3Submit} className="space-y-4 animate-fade-in">
-            {/* Store Name Input */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Store / Outlet Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                placeholder="e.g. Apex Retail, Velvet Studio"
-                className="w-full px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
-              />
-            </div>
-
-            {/* Category Select */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Business Category
-              </label>
-              <div className="relative">
-                <select
-                  value={storeCategory}
-                  onChange={(e) => setStoreCategory(e.target.value)}
-                  className="w-full appearance-none px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs pr-10"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Store Contact Phone with Country Code */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Contact Phone
-              </label>
-              <div className="flex items-center gap-2">
-                <CountryCodeSelect
-                  value={storeCountryCode}
-                  onChange={setStoreCountryCode}
-                />
-                <input
-                  type="tel"
-                  value={storePhone}
-                  onChange={(e) => setStorePhone(e.target.value)}
-                  placeholder="1711-223344"
-                  className="flex-1 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-mono font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
-                />
-              </div>
-            </div>
-
-            {/* Physical Outlet Address (Optional) */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Physical Outlet Address (Optional)
-              </label>
-              <input
-                type="text"
-                value={storeAddress}
-                onChange={(e) => setStoreAddress(e.target.value)}
-                placeholder="e.g. Banani, Dhaka or leave blank for Online Store"
-                className="w-full px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
-              />
-            </div>
-
-            {/* Currency & BIN Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Currency
-                </label>
-                <select
-                  value={storeCurrency}
-                  onChange={(e) => setStoreCurrency(e.target.value as Currency)}
-                  className="w-full px-4 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-[#3b82f6] shadow-2xs"
-                >
-                  <option value="BDT">BDT (৳)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="INR">INR (₹)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  BIN / VAT No.
-                </label>
-                <input
-                  type="text"
-                  value={storeBin}
-                  onChange={(e) => setStoreBin(e.target.value)}
-                  placeholder="000123456-0101"
-                  className="w-full px-4 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-mono font-medium focus:outline-none focus:border-[#3b82f6] shadow-2xs"
-                />
-              </div>
-            </div>
-
-            {/* Store Logo & Signature Upload Cards */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {/* Logo Upload */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center flex flex-col items-center justify-center">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Store Logo
-                </label>
-                {storeLogoUrl ? (
-                  <div className="relative mb-2">
-                    <img src={storeLogoUrl} alt="Preview" className="w-12 h-12 object-contain rounded-xl border border-slate-200 p-1" />
-                    <button
-                      type="button"
-                      onClick={() => setStoreLogoUrl(null)}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px]"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center mb-1.5 text-slate-400">
-                    <BuildingIcon className="w-5 h-5" />
-                  </div>
-                )}
-                <label className="cursor-pointer px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all">
-                  <span>{storeLogoUrl ? 'Change' : 'Upload Logo'}</span>
-                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                </label>
-              </div>
-
-              {/* Signature Upload */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center flex flex-col items-center justify-center">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Digital Signature
-                </label>
-                {storeSignatureUrl ? (
-                  <div className="relative mb-2">
-                    <img src={storeSignatureUrl} alt="Signature" className="h-10 w-auto object-contain" />
-                    <button
-                      type="button"
-                      onClick={() => setStoreSignatureUrl(null)}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px]"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center mb-1.5 text-slate-400">
-                    <ShieldCheckIcon className="w-5 h-5" />
-                  </div>
-                )}
-                <label className="cursor-pointer px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all">
-                  <span>{storeSignatureUrl ? 'Change' : 'Upload Sign'}</span>
-                  <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
-                </label>
-              </div>
-            </div>
-
-            {/* Submit Step 3 */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 mt-3 rounded-full bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/20 active:scale-[0.99] transition-all disabled:opacity-50"
-            >
-              {loading ? 'Configuring Storefront...' : 'Complete Store Setup & Launch'}
-            </button>
-          </form>
         )}
 
         {/* Security Footer Note */}

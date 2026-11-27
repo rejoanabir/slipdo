@@ -56,7 +56,7 @@ export class StorageService {
       const found = list.find((b) => b.id === activeId);
       return found || list[0] || {
         id: 'biz_' + this.getCurrentUserId().slice(0, 8),
-        name: 'My Store',
+        name: 'Merchant Store',
         category: 'General Retail & Services',
         address: 'Online Store',
         phone: '',

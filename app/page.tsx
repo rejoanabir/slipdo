@@ -65,24 +65,28 @@ export default function DashboardPage() {
             supabaseDb.getBusinesses(uid),
           ]);
 
-          const localBizList = StorageService.getBusinesses();
-          const userMeta = session.user?.user_metadata;
-          const hasExistingStore =
-            (cloudBusinesses && cloudBusinesses.length > 0) ||
-            localBizList.length > 0 ||
-            StorageService.isStoreSetupCompleted(uid) ||
-            userMeta?.store_setup_completed === true ||
-            !!userMeta?.default_business;
-
-          // Only route to step 3 if there is truly no existing store
-          if (!hasExistingStore) {
-            router.replace('/login?step=3');
-            return;
-          }
-
           let effectiveBusinesses = (cloudBusinesses && cloudBusinesses.length > 0) ? cloudBusinesses : localBizList;
           if (effectiveBusinesses.length === 0 && userMeta?.default_business) {
             effectiveBusinesses = [userMeta.default_business];
+          }
+
+          if (effectiveBusinesses.length === 0) {
+            const bizName = userMeta?.name || userMeta?.full_name || (session.user?.email ? session.user.email.split('@')[0] : 'Merchant Store');
+            const defaultBiz: Business = {
+              id: 'biz_' + Date.now().toString(36),
+              name: bizName,
+              category: 'General Retail & Services',
+              address: 'Online Store',
+              phone: session.user?.phone || '',
+              bin: '',
+              currency: 'BDT',
+              currencySymbol: '৳',
+            };
+            StorageService.saveBusiness(defaultBiz);
+            StorageService.setActiveBusiness(defaultBiz.id);
+            StorageService.setCloudBusinesses(uid, [defaultBiz]);
+            supabaseDb.saveBusiness(defaultBiz, uid).catch(console.warn);
+            effectiveBusinesses = [defaultBiz];
           }
 
           StorageService.markStoreSetupCompleted(uid);

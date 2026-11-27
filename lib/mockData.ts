@@ -4,8 +4,8 @@ import { Business, Customer, Receipt, FigmaChecklistItem } from './types';
 export const INITIAL_BUSINESSES: Business[] = [
   {
     id: 'biz_default',
-    name: 'My Store',
-    nameBn: 'আমার দোকান',
+    name: 'Merchant Store',
+    nameBn: 'মার্চেন্ট স্টোর',
     category: 'General Retail & Services',
     categoryBn: 'খুচরা ব্যবসা ও সেবা',
     address: 'Online Store',

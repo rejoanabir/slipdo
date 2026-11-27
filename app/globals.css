@@ -65,9 +65,10 @@
     overflow: visible !important;
   }
 
-  /* Force hide all standard UI elements */
+  /* Force hide all standard UI elements, navigations, AND MAIN CONTENT from layout */
   header,
   nav,
+  main,
   footer,
   aside,
   button,
@@ -76,18 +77,44 @@
   textarea,
   .print\:hidden {
     display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  /* Prevent any wrapper element from retaining 100vh/screen height in print */
+  .min-h-screen,
+  div {
+    min-height: 0 !important;
   }
 
   /* De-elevate fixed modal overlays */
   .fixed.inset-0 {
     position: static !important;
+    display: block !important;
     background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    animation: none !important;
+    transform: none !important;
     padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   .fixed.inset-0 > div:not(#printable-receipt-area) {
     display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 
   body * {
@@ -96,11 +123,12 @@
 
   #printable-receipt-area,
   #printable-receipt-area * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
   #printable-receipt-area {
-    position: relative !important;
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: 580px !important;
     margin: 0 auto !important;
@@ -108,19 +136,25 @@
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Compact paper layout for print to avoid spilling over 1 page */
   .receipt-paper {
     margin: 0 auto !important;
-    padding: 10px 14px !important;
+    padding: 8px 14px !important;
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
     border-radius: 8px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
     height: auto !important;
@@ -133,12 +167,12 @@
   .receipt-paper span,
   .receipt-paper td,
   .receipt-paper th {
-    font-size: 10.5px !important;
-    line-height: 1.35 !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
   }
 
   .receipt-paper img {
-    max-height: 48px !important;
+    max-height: 40px !important;
   }
 
   tr, .avoid-break {
