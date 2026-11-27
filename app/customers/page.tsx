@@ -11,7 +11,7 @@ import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { ReceiptPreview } from '../../components/ReceiptPreview';
-import { UsersIcon, XIcon, ReceiptIcon, EyeIcon, PrinterIcon, PlusIcon } from '../../components/Icons';
+import { UsersIcon, XIcon, ReceiptIcon, EyeIcon, PrinterIcon, PlusIcon, CheckIcon } from '../../components/Icons';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -25,6 +25,45 @@ export default function CustomersPage() {
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<Receipt | null>(null);
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustEmail, setNewCustEmail] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName.trim()) return;
+
+    const newCustomer: Customer = {
+      id: 'cust_' + Date.now(),
+      name: newCustName.trim(),
+      phone: newCustPhone.trim() || '+880 1700-000000',
+      email: newCustEmail.trim() || `${newCustName.trim().toLowerCase().replace(/\s+/g, '.')}@client.bd`,
+      totalSpent: 0,
+      receipts: 0,
+      lastVisit: 'Just created',
+    };
+
+    StorageService.saveCustomer(newCustomer);
+    setCustomers((prev) => [newCustomer, ...prev]);
+
+    const session = supabase.getSession();
+    if (session?.user?.id) {
+      await supabaseDb.saveCustomer(newCustomer, session.user.id).catch(console.error);
+    }
+
+    setNewCustName('');
+    setNewCustPhone('');
+    setNewCustEmail('');
+    setIsAddCustomerOpen(false);
+    showToast(`Customer "${newCustomer.name}" added successfully!`);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -102,17 +141,33 @@ export default function CustomersPage() {
                 : 'CRM profiles with lifetime spend & transaction histories'}
             </p>
           </div>
-          <div className="sm:w-64">
-            <input
-              type="text"
-              value={search}
-              suppressHydrationWarning
-              placeholder="Search customer by name or phone..."
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs focus:outline-hidden focus:border-emerald-500 shadow-2xs"
-            />
+          <div className="flex items-center gap-2">
+            <div className="sm:w-64">
+              <input
+                type="text"
+                value={search}
+                suppressHydrationWarning
+                placeholder="Search customer by name or phone..."
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs focus:outline-hidden focus:border-emerald-500 shadow-2xs"
+              />
+            </div>
+            <button
+              onClick={() => setIsAddCustomerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-soft transition-all shrink-0"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>+ Customer</span>
+            </button>
           </div>
         </div>
+
+        {toastMessage && (
+          <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-fade-in">
+            <CheckIcon className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
 
         {/* Customer Cards Grid or Empty State */}
         {filtered.length === 0 ? (
@@ -277,6 +332,84 @@ export default function CustomersPage() {
             <div id="printable-receipt-area">
               <ReceiptPreview receipt={previewReceipt} business={currentBiz} templateId={previewReceipt.template} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Customer Modal */}
+      {isAddCustomerOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-elevated border border-slate-100 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <UsersIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-base text-slate-900">Add New Customer</h3>
+                  <p className="text-[11px] text-slate-500">Record client profile in CRM directory</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddCustomerOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomer} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Customer Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Tanvir Hasan"
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number (WhatsApp/SMS)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. +880 1711-223344"
+                  value={newCustPhone}
+                  onChange={(e) => setNewCustPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="e.g. tanvir@client.bd"
+                  value={newCustEmail}
+                  onChange={(e) => setNewCustEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomerOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-soft transition-all"
+                >
+                  Save Customer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

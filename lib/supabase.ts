@@ -419,6 +419,67 @@ export const supabaseDb = {
     }));
   },
 
+  async saveCustomer(customer: Partial<Customer> & { name: string }, merchantId: string): Promise<boolean> {
+    const body: Record<string, any> = {
+      merchant_id: merchantId,
+      name: customer.name,
+      phone: customer.phone || null,
+      email: customer.email || null,
+      total_spent: customer.totalSpent || 0,
+      total_receipts: customer.receipts || 1,
+      last_visit: new Date().toISOString(),
+    };
+    if (customer.id && !customer.id.startsWith('cust_')) {
+      body.id = customer.id;
+    }
+    const { error } = await supabase.fetchPostgrest(`/customers`, {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(body),
+    });
+    return !error;
+  },
+
+  async upsertCustomerFromReceipt(receipt: Receipt, merchantId: string): Promise<void> {
+    if (!receipt.customerName || receipt.customerName.trim().toLowerCase() === 'walk-in customer') return;
+    try {
+      const phoneParam = receipt.customerPhone ? `&phone=eq.${encodeURIComponent(receipt.customerPhone)}` : '';
+      const nameParam = `name=eq.${encodeURIComponent(receipt.customerName)}`;
+      const query = phoneParam
+        ? `/customers?merchant_id=eq.${encodeURIComponent(merchantId)}${phoneParam}&limit=1`
+        : `/customers?merchant_id=eq.${encodeURIComponent(merchantId)}&${nameParam}&limit=1`;
+
+      const { data } = await supabase.fetchPostgrest(query);
+      if (Array.isArray(data) && data.length > 0) {
+        const existing = data[0];
+        const newSpent = (Number(existing.total_spent) || 0) + (receipt.total || 0);
+        const newReceipts = (Number(existing.total_receipts) || 0) + 1;
+        await supabase.fetchPostgrest(`/customers?id=eq.${encodeURIComponent(existing.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            total_spent: newSpent,
+            total_receipts: newReceipts,
+            last_visit: new Date().toISOString(),
+          }),
+        });
+      } else {
+        await supabase.fetchPostgrest(`/customers`, {
+          method: 'POST',
+          body: JSON.stringify({
+            merchant_id: merchantId,
+            name: receipt.customerName,
+            phone: receipt.customerPhone || null,
+            total_spent: receipt.total || 0,
+            total_receipts: 1,
+            last_visit: new Date().toISOString(),
+          }),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync customer from receipt to Supabase:', err);
+    }
+  },
+
   // --- Receipts ---
   async getReceipts(merchantId: string): Promise<Receipt[]> {
     const { data, error } = await supabase.fetchPostgrest(
@@ -464,6 +525,11 @@ export const supabaseDb = {
       headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
       body: JSON.stringify(body),
     });
+
+    if (!error && receipt.customerName) {
+      this.upsertCustomerFromReceipt(receipt, merchantId).catch(() => {});
+    }
+
     return !error;
   },
 

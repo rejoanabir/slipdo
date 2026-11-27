@@ -83,6 +83,16 @@ export default function DashboardPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Check if voucher was issued today (handles both local "Today, 12:00" and Supabase timestamps)
+  const isIssuedToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    if (dateStr.toLowerCase().includes('today')) return true;
+    const now = new Date();
+    const d1 = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const d2 = now.toLocaleDateString('en-GB');
+    return dateStr.includes(d1) || dateStr.includes(d2);
+  };
+
   // Dynamic KPI aggregates
   const totalVolume = receipts
     .filter((r) => r.status !== 'Void')
@@ -90,7 +100,7 @@ export default function DashboardPage() {
 
   const todaySales = receipts
     .filter((r) => r.status !== 'Void')
-    .filter((r) => (r.date || '').includes('Today'))
+    .filter((r) => isIssuedToday(r.date))
     .reduce((sum, r) => sum + r.total, 0);
 
   const renderPaymentBadge = (method: string) => {

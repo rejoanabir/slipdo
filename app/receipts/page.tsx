@@ -19,6 +19,7 @@ import {
   PrinterIcon,
   Trash2Icon,
   CheckIcon,
+  DownloadIcon,
 } from '../../components/Icons';
 
 export default function ReceiptsArchivePage() {
@@ -106,6 +107,32 @@ export default function ReceiptsArchivePage() {
     }, 300);
   };
 
+  const handleExportCsv = () => {
+    if (filtered.length === 0) {
+      showToast('No vouchers available to export');
+      return;
+    }
+    const headers = ['Receipt No', 'Date', 'Customer Name', 'Customer Phone', 'Payment Method', 'Status', 'Total'];
+    const rows = filtered.map((r) => [
+      `"${r.receiptNo || r.id}"`,
+      `"${r.date}"`,
+      `"${(r.customerName || '').replace(/"/g, '""')}"`,
+      `"${r.customerPhone || ''}"`,
+      `"${r.paymentMethod}"`,
+      `"${r.status}"`,
+      r.total,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `SlipDo_Vouchers_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Voucher ledger exported to CSV');
+  };
+
   const filtered = receipts.filter((r) => {
     const matchesSearch =
       !search ||
@@ -151,12 +178,22 @@ export default function ReceiptsArchivePage() {
             </p>
           </div>
 
-          <Link
-            href="/new"
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-soft transition-all"
-          >
-            <span>+ New Receipt</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCsv}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs transition-all"
+              title="Download CSV report"
+            >
+              <DownloadIcon className="w-3.5 h-3.5 text-slate-600" />
+              <span>Export CSV</span>
+            </button>
+            <Link
+              href="/new"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-soft transition-all"
+            >
+              <span>+ New Receipt</span>
+            </Link>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}
