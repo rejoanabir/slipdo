@@ -184,7 +184,7 @@ export default function ReceiptsArchivePage() {
         </div>
       )}
 
-      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
+      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 pb-28 sm:pb-8 space-y-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

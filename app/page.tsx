@@ -193,7 +193,7 @@ export default function DashboardPage() {
         onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-5">
+      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 pb-28 sm:pb-8 space-y-5">
         {/* Toast Notification */}
         {toastMessage && (
           <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xl animate-fade-in flex items-center gap-2">

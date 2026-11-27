@@ -285,7 +285,7 @@ export default function ProfilePage() {
         onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 pb-28 sm:pb-8 space-y-6">
         {toastMessage && (
           <div className="fixed top-20 right-5 z-50 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xl animate-fade-in flex items-center gap-2">
             <CheckIcon className="w-4 h-4 text-emerald-400" />
@@ -320,8 +320,12 @@ export default function ProfilePage() {
                   <span>Store Owner</span>
                   <span>·</span>
                   <span>{merchantEmail}</span>
-                  <span>·</span>
-                  <span className="font-mono">+{merchantCountryCode} {merchantPhone}</span>
+                  {merchantPhone ? (
+                    <>
+                      <span>·</span>
+                      <span className="font-mono">{merchantPhone.startsWith('+') ? merchantPhone : `+880 ${merchantPhone}`}</span>
+                    </>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -418,7 +422,7 @@ export default function ProfilePage() {
                 Contact Phone
               </label>
               <div className="px-4 py-2.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800">
-                {activeBiz.phone}
+                {activeBiz.phone ? activeBiz.phone : <span className="text-slate-400 font-sans italic">Not configured</span>}
               </div>
             </div>
 

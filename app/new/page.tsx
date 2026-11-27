@@ -450,8 +450,10 @@ export default function ReceiptCreatorPage() {
           <input
             type="number"
             min="0"
-            value={discount}
+            value={discount === 0 ? '' : discount}
+            placeholder="0"
             disabled={!enableDiscount}
+            onFocus={(e) => e.target.select()}
             suppressHydrationWarning
             onChange={(e) => setDiscount(Number(e.target.value) || 0)}
             className="w-24 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono disabled:opacity-40"
@@ -623,7 +625,7 @@ export default function ReceiptCreatorPage() {
         onOpenStoreDrawer={() => setIsStoreDrawerOpen(true)}
       />
 
-      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 space-y-4">
+      <main className="max-w-[1440px] mx-auto p-4 sm:p-6 pb-28 sm:pb-8 space-y-4">
         {/* Mobile Segmented Control: [Edit Details] vs [Live Preview] */}
         <div className="lg:hidden bg-slate-200/80 p-1 rounded-full grid grid-cols-2 gap-1">
           <button

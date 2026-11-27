@@ -246,16 +246,29 @@ function rsGenPoly(degree: number): number[] {
   }
 
   // Standard Format Info: Level M (00) + Mask 0 (000) => BCH format code
+  // Format bit 14 down to bit 0:
   const formatStr = [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0];
 
+  // Top-left finder format placement:
+  // (8,0)=b14, (8,1)=b13, (8,2)=b12, (8,3)=b11, (8,4)=b10, (8,5)=b9, (8,7)=b8, (8,8)=b7
+  // (7,8)=b6, (5,8)=b5, (4,8)=b4, (3,8)=b3, (2,8)=b2, (1,8)=b1, (0,8)=b0
   for (let i = 0; i < 6; i++) matrix[8][i] = formatStr[i];
   matrix[8][7] = formatStr[6];
   matrix[8][8] = formatStr[7];
   matrix[7][8] = formatStr[8];
   for (let i = 9; i < 15; i++) matrix[14 - i][8] = formatStr[i];
 
-  for (let i = 0; i < 7; i++) matrix[size - 1 - i][8] = formatStr[i];
-  for (let i = 7; i < 15; i++) matrix[8][size - 15 + i] = formatStr[i];
+  // Bottom-left finder format placement:
+  // (size-1, 8)=b0, (size-2, 8)=b1, ..., (size-7, 8)=b6
+  for (let i = 0; i < 7; i++) {
+    matrix[size - 1 - i][8] = formatStr[14 - i];
+  }
+
+  // Top-right finder format placement:
+  // (8, size-8)=b7, (8, size-7)=b8, ..., (8, size-1)=b14
+  for (let i = 0; i < 8; i++) {
+    matrix[8][size - 8 + i] = formatStr[7 - i];
+  }
 
   return { matrix, size };
 }
