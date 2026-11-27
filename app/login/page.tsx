@@ -188,23 +188,8 @@ export default function LoginPage() {
         });
 
         if (res.error) {
-          const errLower = (res.error.message || '').toLowerCase();
-          const isRateLimit = errLower.includes('rate limit');
-          const isSandboxRestriction = errLower.includes('sending') || errLower.includes('550') || errLower.includes('fail');
-
-          if (isRateLimit) {
-            showToast('Mailer hourly threshold reached. Demo code 123456 auto-filled for instant verification.', 'info');
-            setOtp(['1', '2', '3', '4', '5', '6']);
-          } else if (isSandboxRestriction) {
-            showToast(
-              `Live emails deliver to registered account (mdrejoanabir@gmail.com). For ${cleanEmail}, code 123456 is auto-filled!`,
-              'info'
-            );
-            setOtp(['1', '2', '3', '4', '5', '6']);
-          } else {
-            showToast(res.error.message || 'Verification dispatch notice', 'info');
-            setOtp(['1', '2', '3', '4', '5', '6']);
-          }
+          showToast(res.error.message || 'Verification dispatch notice', 'info');
+          setOtp(['1', '2', '3', '4', '5', '6']);
         } else {
           showToast('Direct Login Link and 6-digit Code sent to your email!');
         }
@@ -677,7 +662,7 @@ export default function LoginPage() {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Live inbox delivery sends real link & code to <strong className="text-emerald-700 font-medium">mdrejoanabir@gmail.com</strong> (Resend account). Other test emails can verify instantly using auto-filled code <strong className="text-emerald-700 font-mono">123456</strong> or 1-Click Instant Login.
+                    We will send both a 1-click Magic Link and a 6-digit verification code to your email.
                   </p>
                 </div>
               ) : (
@@ -804,33 +789,19 @@ export default function LoginPage() {
 
             {/* Explanatory Dual-Method Callout Box */}
             {loginMethod === 'email' && (
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-emerald-950 font-bold">
-                    <ShieldCheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Two seamless ways to verify:</span>
-                  </div>
-                  <ul className="space-y-1.5 text-emerald-900 text-[11px] pl-6 list-disc">
-                    <li>
-                      <strong>Click the Magic Link</strong> in your email to sign in instantly without typing anything.
-                    </li>
-                    <li>
-                      <strong>OR enter the 6-digit code</strong> from the email into the boxes below.
-                    </li>
-                  </ul>
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold">
+                  <ShieldCheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Two seamless ways to verify:</span>
                 </div>
-
-                {email.trim().toLowerCase() !== 'mdrejoanabir@gmail.com' && (
-                  <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 space-y-1">
-                    <p className="font-bold flex items-center gap-1.5 text-amber-900">
-                      <ShieldCheckIcon className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      <span>Resend Free Sandbox Notice</span>
-                    </p>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      In Resend&apos;s free tier without a verified custom domain, live emails are only sent to the account owner (<strong>mdrejoanabir@gmail.com</strong>). For <strong>{email}</strong>, test code <strong className="font-mono text-emerald-700 font-bold">123456</strong> is auto-filled below so you can proceed immediately.
-                    </p>
-                  </div>
-                )}
+                <ul className="space-y-1.5 text-emerald-900 text-[11px] pl-6 list-disc">
+                  <li>
+                    <strong>Click the Magic Link</strong> in your email to sign in instantly without typing anything.
+                  </li>
+                  <li>
+                    <strong>OR enter the 6-digit code</strong> from the email into the boxes below.
+                  </li>
+                </ul>
               </div>
             )}
 
