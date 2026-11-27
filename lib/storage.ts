@@ -9,6 +9,8 @@ const KEYS = {
   CHECKLIST: 'slipdo_checklist',
   LOGO_LOCKUP: 'slipdo_logo_lockup',
   LANG: 'slipdo_language',
+  AUTH_USER: 'slipdo_auth_user',
+  AUTH_TOKEN: 'slipdo_auth_token',
 };
 
 export class StorageService {
@@ -187,5 +189,29 @@ export class StorageService {
       }
     }
     return list;
+  }
+
+  // --- Auth & Session State ---
+  static getAuthUser(): { id: string; email: string; name: string; phone?: string; role: string } | null {
+    if (!this.isClient()) return null;
+    try {
+      const data = localStorage.getItem(KEYS.AUTH_USER);
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+
+  static setAuthUser(user: { id: string; email: string; name: string; phone?: string; role: string }): void {
+    if (!this.isClient()) return;
+    localStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
+  }
+
+  static clearAuthSession(): void {
+    if (!this.isClient()) return;
+    localStorage.removeItem(KEYS.AUTH_USER);
+    localStorage.removeItem(KEYS.AUTH_TOKEN);
+    localStorage.removeItem('slipdo_supabase_session');
   }
 }

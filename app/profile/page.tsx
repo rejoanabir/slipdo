@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { StorageService } from '../../lib/storage';
+import { supabase } from '../../lib/supabase';
 import { Business } from '../../lib/types';
 import {
   UserIcon,
@@ -23,6 +25,7 @@ import {
 } from '../../components/Icons';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
@@ -44,6 +47,13 @@ export default function ProfilePage() {
     setBusinesses(bizList);
     const current = StorageService.getActiveBusiness();
     setActiveBiz(current);
+
+    const authUser = StorageService.getAuthUser();
+    if (authUser) {
+      if (authUser.name) setMerchantName(authUser.name);
+      if (authUser.email) setMerchantEmail(authUser.email);
+      if (authUser.phone) setMerchantPhone(authUser.phone);
+    }
   }, []);
 
   const showToast = (msg: string) => {
@@ -442,8 +452,13 @@ export default function ProfilePage() {
               Sync Cache
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
+                await supabase.auth.signOut();
+                StorageService.clearAuthSession();
                 showToast('Signed out of merchant session');
+                setTimeout(() => {
+                  router.push('/login');
+                }, 400);
               }}
               className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-colors"
             >

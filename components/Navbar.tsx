@@ -109,6 +109,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UserIcon className="w-4 h-4 text-slate-700" />
           </Link>
 
+          {/* Quick Login / Switch Account */}
+          <Link
+            href="/login"
+            className={`hidden sm:inline-flex items-center px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors ${
+              pathname === '/login' ? 'bg-slate-100 text-slate-900 font-bold' : ''
+            }`}
+          >
+            {lang === 'bn' ? 'লগইন' : 'Login'}
+          </Link>
+
           {/* Quick Create CTA */}
           <Link
             href="/new"
