@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { StorageService } from '../../lib/storage';
 import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business, Customer, Receipt, ReceiptItem, TemplateId, PaymentMethod } from '../../lib/types';
-import { formatCurrency, calcTotals } from '../../lib/format';
+import { formatCurrency, calcTotals, generateSecureToken } from '../../lib/format';
 import { Navbar } from '../../components/Navbar';
 import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
@@ -107,7 +107,13 @@ export default function ReceiptCreatorPage() {
 
   const handleItemChange = (idx: number, field: 'desc' | 'qty' | 'price', val: any) => {
     const updated = [...items];
-    updated[idx] = { ...updated[idx], [field]: val };
+    let sanitizedVal = val;
+    if (field === 'price') {
+      sanitizedVal = Math.max(0, parseFloat(val) || 0);
+    } else if (field === 'qty') {
+      sanitizedVal = Math.max(1, Math.min(999999, Math.floor(Number(val)) || 1));
+    }
+    updated[idx] = { ...updated[idx], [field]: sanitizedVal };
     setItems(updated);
   };
 
@@ -179,7 +185,7 @@ export default function ReceiptCreatorPage() {
     const newReceipt: Receipt = {
       id: receiptNo,
       receiptNo,
-      token: 'sd_' + Math.random().toString(36).substring(2, 10),
+      token: generateSecureToken('sd_'),
       date: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       customerName: customerName || 'Valued Customer',
       customerPhone: formattedCustomerPhone,
@@ -432,7 +438,7 @@ export default function ReceiptCreatorPage() {
             value={taxRate}
             disabled={!enableTax}
             suppressHydrationWarning
-            onChange={(e) => setTaxRate(Number(e.target.value) || 0)}
+            onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
             className="w-20 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono disabled:opacity-40"
           />
         </div>
@@ -455,7 +461,7 @@ export default function ReceiptCreatorPage() {
             disabled={!enableDiscount}
             onFocus={(e) => e.target.select()}
             suppressHydrationWarning
-            onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+            onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))}
             className="w-24 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono disabled:opacity-40"
           />
         </div>
@@ -468,7 +474,7 @@ export default function ReceiptCreatorPage() {
             value={deliveryFee || ''}
             placeholder="0"
             suppressHydrationWarning
-            onChange={(e) => setDeliveryFee(Number(e.target.value) || 0)}
+            onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
             className="w-24 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-right font-mono"
           />
         </div>

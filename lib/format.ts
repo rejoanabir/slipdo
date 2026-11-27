@@ -168,3 +168,16 @@ export function numberToWordsBn(amount: number): string {
 
   return `কথায়: ${words.trim()} টাকা মাত্র`;
 }
+
+/**
+ * Cryptographically Secure Token Generator
+ * Replaces pseudo-random Math.random() with Web Crypto API (Check 18)
+ */
+export function generateSecureToken(prefix = 'sd_'): string {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(6);
+    crypto.getRandomValues(bytes);
+    return prefix + Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 10);
+  }
+  return prefix + Math.random().toString(36).substring(2, 10);
+}

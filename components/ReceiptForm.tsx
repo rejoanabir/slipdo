@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Business, Customer, Receipt, ReceiptItem, TemplateId, PaymentMethod, PaymentStatus, Currency } from '../lib/types';
+import { generateSecureToken } from '../lib/format';
 import { PlusIcon, Trash2Icon, CheckCircleIcon } from './Icons';
 
 interface ReceiptFormProps {
@@ -130,7 +131,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
       templateId: updatedData.templateId || templateId,
       notes: updatedData.notes !== undefined ? updatedData.notes : notes,
       terms: updatedData.terms !== undefined ? updatedData.terms : terms,
-      publicToken: initialReceipt?.publicToken || Math.random().toString(36).substring(2, 15) + Date.now().toString(36),
+      publicToken: initialReceipt?.publicToken || generateSecureToken('sd_'),
       createdAt: initialReceipt?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -228,7 +229,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
       templateId,
       notes,
       terms,
-      publicToken: initialReceipt?.publicToken || Math.random().toString(36).substring(2, 15) + Date.now().toString(36),
+      publicToken: initialReceipt?.publicToken || generateSecureToken('sd_'),
       createdAt: initialReceipt?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
