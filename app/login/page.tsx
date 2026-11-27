@@ -187,7 +187,12 @@ export default function LoginPage() {
         });
 
         if (res.error) {
-          showToast(res.error.message || 'Verification dispatch notice', 'error');
+          const isRateLimit = res.error.message?.toLowerCase().includes('rate limit');
+          if (isRateLimit) {
+            showToast('Supabase mailer rate limit reached (2/hr). You can verify with demo code 123456 or earlier email code.', 'error');
+          } else {
+            showToast(res.error.message || 'Verification dispatch notice', 'error');
+          }
         } else {
           showToast('Direct Login Link and 6-digit Code sent to your email!');
         }
@@ -409,6 +414,21 @@ export default function LoginPage() {
     setCity('Shop 42, Multiplan Center, Elephant Road, Dhaka');
     setOtp(['1', '2', '3', '4', '5', '6']);
     showToast('Demo merchant credentials filled');
+  };
+
+  const handleDirectDemoAccess = () => {
+    const cleanEmail = email.trim() || 'merchant.nextech@gmail.com';
+    const authUser = {
+      id: 'usr_demo_merchant',
+      email: cleanEmail,
+      name: cleanEmail.split('@')[0] || 'Demo Merchant',
+      role: 'Store Owner',
+    };
+    StorageService.setAuthUser(authUser);
+    showToast('Signed in successfully as Demo Merchant!');
+    setTimeout(() => {
+      router.push('/');
+    }, 400);
   };
 
   if (!mounted) {
@@ -691,7 +711,7 @@ export default function LoginPage() {
               )}
 
               {/* 1-Click Sandbox Test helper */}
-              <div className="pt-1">
+              <div className="pt-1 space-y-2">
                 <button
                   type="button"
                   onClick={handleQuickDemo}
@@ -699,10 +719,23 @@ export default function LoginPage() {
                 >
                   <span className="flex items-center gap-2">
                     <BadgeCheckIcon className="w-4 h-4 text-emerald-600" />
-                    <span>1-Click Fill Demo Credentials</span>
+                    <span>Auto-fill Demo Credentials</span>
                   </span>
                   <span className="text-[11px] text-emerald-700 font-mono group-hover:translate-x-0.5 transition-transform">
                     Auto-fill →
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDirectDemoAccess}
+                  className="w-full py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center justify-between transition-all border border-slate-200 group"
+                >
+                  <span className="flex items-center gap-2">
+                    <ShieldCheckIcon className="w-4 h-4 text-slate-700" />
+                    <span>Instant Direct Login (Bypass Email Limit)</span>
+                  </span>
+                  <span className="text-[11px] text-slate-600 font-mono group-hover:translate-x-0.5 transition-transform">
+                    Enter Dashboard →
                   </span>
                 </button>
               </div>
@@ -800,6 +833,16 @@ export default function LoginPage() {
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   <span>Demo Code: <strong className="text-emerald-800 font-mono">123456</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtp(['1', '2', '3', '4', '5', '6']);
+                      showToast('Filled demo code 123456');
+                    }}
+                    className="ml-1 text-emerald-700 font-bold underline hover:text-emerald-900"
+                  >
+                    (Auto-fill)
+                  </button>
                 </span>
                 {resendCountdown > 0 ? (
                   <span className="text-slate-400 font-mono">Resend in {resendCountdown}s</span>
