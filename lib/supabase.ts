@@ -635,25 +635,45 @@ export const supabaseDb = {
       is_default: true,
     };
 
-    // 1. Sync directly to user_metadata on the merchant's auth record in Supabase
+    // Lightweight metadata payload (never send massive base64 into user_metadata)
+    const metaBusiness = {
+      id: biz.id,
+      name: biz.name,
+      category: biz.category,
+      address: biz.address,
+      phone: biz.phone,
+      bin: biz.bin,
+      currency: biz.currency || 'BDT',
+      currencySymbol: biz.currencySymbol || '৳',
+    };
+
+    // Non-blocking sync with 2.5s safeguard timeout
     try {
-      await supabase.auth.updateUser({
+      const syncMetadata = supabase.auth.updateUser({
         data: {
           store_setup_completed: true,
-          default_business: biz,
+          default_business: metaBusiness,
         },
       });
+      const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
+      await Promise.race([syncMetadata, timeout]);
     } catch (err) {
       console.warn('Failed to sync business into user_metadata:', err);
     }
 
-    // 2. Upsert into businesses table in PostgREST
-    const { error } = await supabase.fetchPostgrest(`/businesses`, {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: JSON.stringify(body),
-    });
-    return !error;
+    // Upsert into businesses table in PostgREST with 2.5s safeguard timeout
+    try {
+      const dbUpsert = supabase.fetchPostgrest(`/businesses`, {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify(body),
+      });
+      const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
+      const res: any = await Promise.race([dbUpsert, timeout]);
+      return !!(res && !res.error);
+    } catch {
+      return false;
+    }
   },
 
   // --- Customers ---

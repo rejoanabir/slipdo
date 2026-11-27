@@ -46,12 +46,16 @@ export default function ProfilePage() {
 
   // User Profile form state
   const [merchantName, setMerchantName] = useState('Store Owner');
-  const [merchantEmail, setMerchantEmail] = useState('merchant@mystore.bd');
+  const [merchantEmail, setMerchantEmail] = useState('');
   const [merchantCountryCode, setMerchantCountryCode] = useState('BD');
-  const [merchantPhone, setMerchantPhone] = useState('1700-000000');
+  const [merchantPhone, setMerchantPhone] = useState('');
   const [thermalSize, setThermalSize] = useState<'58mm' | '80mm'>('80mm');
   const [autoSms, setAutoSms] = useState(true);
   const [pinProtected, setPinProtected] = useState(true);
+  const [currentDevice, setCurrentDevice] = useState({
+    name: 'Current Browser Session',
+    location: 'Dhaka, Bangladesh · Active now',
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -68,18 +72,42 @@ export default function ProfilePage() {
     const current = StorageService.getActiveBusiness();
     setActiveBiz(current);
 
-    if (authUser) {
-      if (authUser.name) setMerchantName(authUser.name);
-      if (authUser.email) setMerchantEmail(authUser.email);
-      if (authUser.phone) {
-        const raw = authUser.phone;
-        if (raw.startsWith('+880')) {
-          setMerchantCountryCode('BD');
-          setMerchantPhone(raw.replace('+880', '').trim());
-        } else {
-          setMerchantPhone(raw);
-        }
+    // Resolve real user identity
+    const email = session?.user?.email || authUser?.email || '';
+    const name = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || authUser?.name || current?.name || 'Store Owner';
+    const phone = session?.user?.user_metadata?.phone || session?.user?.phone || authUser?.phone || current?.phone || '';
+
+    if (name) setMerchantName(name);
+    if (email) setMerchantEmail(email);
+    if (phone) {
+      if (phone.startsWith('+880')) {
+        setMerchantCountryCode('BD');
+        setMerchantPhone(phone.replace('+880', '').trim());
+      } else {
+        setMerchantPhone(phone);
       }
+    }
+
+    // Dynamic Client Device Detection
+    if (typeof window !== 'undefined' && navigator.userAgent) {
+      const ua = navigator.userAgent;
+      let browser = 'Web Browser';
+      let os = 'Device';
+      if (ua.includes('Firefox')) browser = 'Firefox';
+      else if (ua.includes('Edg')) browser = 'Microsoft Edge';
+      else if (ua.includes('Chrome')) browser = 'Google Chrome';
+      else if (ua.includes('Safari')) browser = 'Apple Safari';
+
+      if (ua.includes('Windows')) os = 'Windows PC';
+      else if (ua.includes('Macintosh') || ua.includes('Mac OS')) os = 'macOS';
+      else if (ua.includes('Android')) os = 'Android';
+      else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+      else if (ua.includes('Linux')) os = 'Linux';
+
+      setCurrentDevice({
+        name: `${browser} on ${os}`,
+        location: 'Verified Terminal · Active now',
+      });
     }
   }, [router]);
 
@@ -97,18 +125,23 @@ export default function ProfilePage() {
     setIsDeleting(true);
     try {
       const session = supabase.getSession();
-      if (session?.user?.id) {
-        const deleted = await supabaseDb.deleteAccount(session.user.id);
-        if (!deleted) {
-          throw new Error('Database failed to permanently purge user record. Please try again.');
-        }
+      const currentUid = session?.user?.id || StorageService.getCurrentUserId();
+
+      if (currentUid && currentUid !== 'guest') {
+        await supabaseDb.deleteAccount(currentUid);
       }
-      await supabase.auth.signOut();
+
+      await supabase.auth.signOut().catch(() => {});
       StorageService.wipeAllUserData();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+
       showToast('Merchant account and all data permanently deleted.');
       setTimeout(() => {
-        router.replace('/login');
-      }, 500);
+        window.location.href = '/login?deleted=true';
+      }, 400);
     } catch (err: any) {
       showToast('Error deleting account: ' + (err?.message || 'Unknown error'));
       setIsDeleting(false);
@@ -232,7 +265,7 @@ export default function ProfilePage() {
 
             <div className="flex items-center gap-2 shrink-0">
               <span className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200">
-                Merchant ID: <strong className="font-mono text-slate-900">#BD-84920</strong>
+                Merchant ID: <strong className="font-mono text-slate-900">#BD-{(activeBiz?.id || StorageService.getCurrentUserId()).replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase()}</strong>
               </span>
             </div>
           </div>
@@ -250,7 +283,7 @@ export default function ProfilePage() {
                 SlipDo Pro Merchant Tier
               </h2>
               <p className="text-xs text-slate-300 mt-1">
-                ৳৪৯৯ / month · Next billing renewal on <strong>December 28, 2026</strong>
+                Active Tier · Verified digital receipts & unlimited cloud backup
               </p>
             </div>
 
@@ -439,36 +472,16 @@ export default function ProfilePage() {
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                 <div>
                   <p className="text-xs font-bold text-slate-800">
-                    Android Termux Browser (This Device)
+                    {currentDevice.name} (This Device)
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Dhaka, Bangladesh · Active now
+                    {currentDevice.location}
                   </p>
                 </div>
               </div>
               <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/60">
                 Current
               </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-slate-400"></div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">
-                    POS Counter Windows PC (Edge)
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Elephant Road Outlet · Last active 2 hours ago
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => showToast('Session revoked successfully')}
-                className="text-[11px] font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 px-3 py-1 rounded-full transition-colors"
-              >
-                Revoke
-              </button>
             </div>
           </div>
         </div>

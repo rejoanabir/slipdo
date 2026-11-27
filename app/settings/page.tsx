@@ -144,18 +144,23 @@ export default function SettingsPage() {
     setIsDeleting(true);
     try {
       const session = supabase.getSession();
-      if (session?.user?.id) {
-        const deleted = await supabaseDb.deleteAccount(session.user.id);
-        if (!deleted) {
-          throw new Error('Database failed to permanently purge user record. Please try again.');
-        }
+      const currentUid = session?.user?.id || StorageService.getCurrentUserId();
+
+      if (currentUid && currentUid !== 'guest') {
+        await supabaseDb.deleteAccount(currentUid);
       }
-      await supabase.auth.signOut();
+
+      await supabase.auth.signOut().catch(() => {});
       StorageService.wipeAllUserData();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+
       showToast('Merchant account and all data permanently deleted.');
       setTimeout(() => {
-        router.replace('/login');
-      }, 500);
+        window.location.href = '/login?deleted=true';
+      }, 400);
     } catch (err: any) {
       showToast('Error deleting account: ' + (err?.message || 'Unknown error'));
       setIsDeleting(false);

@@ -97,20 +97,24 @@ function encodeQrMatrix(text: string): { matrix: number[][]; size: number } {
     dataBytes[i] = b;
   }
 
-  // Reed-Solomon Generator Polynomial
-  const ecLen = verInfo.ecPerBlock;
-  let genPoly = [1];
-  for (let i = 0; i < ecLen; i++) {
-    const nextPoly = new Array(genPoly.length + 1).fill(0);
+// Reed-Solomon Generator Polynomial
+function rsGenPoly(degree: number): number[] {
+  let poly = [1];
+  for (let i = 0; i < degree; i++) {
+    const next = new Array(poly.length + 1).fill(0);
     const root = EXP[i];
-    for (let j = 0; j < genPoly.length; j++) {
-      nextPoly[j] ^= gmul(genPoly[j], root);
-      nextPoly[j + 1] ^= genPoly[j];
+    for (let j = 0; j < poly.length; j++) {
+      next[j] ^= poly[j];
+      next[j + 1] ^= gmul(poly[j], root);
     }
-    genPoly = nextPoly;
+    poly = next;
   }
+  return poly;
+}
 
   // Divide data into blocks and generate ECC
+  const ecLen = verInfo.ecPerBlock;
+  const genPoly = rsGenPoly(ecLen);
   const blocks = verInfo.blocks;
   const dataPerBlock = Math.floor(verInfo.totalData / blocks);
   const allEcBlocks: Uint8Array[] = [];
@@ -269,7 +273,7 @@ export const QRCodeSVG: React.FC<QRCodeSVGProps> = ({
   size = 110,
   className = '',
   fillColor = '#0f172a',
-  quietZone = 2,
+  quietZone = 4,
 }) => {
   const { matrix, size: matrixSize } = useMemo(() => {
     try {

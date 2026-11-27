@@ -58,9 +58,9 @@ export class StorageService {
         id: 'biz_' + this.getCurrentUserId().slice(0, 8),
         name: 'My Store',
         category: 'General Retail & Services',
-        address: 'Dhaka, Bangladesh',
-        phone: '+880 1700-000000',
-        bin: '000000000-0101',
+        address: 'Online Store',
+        phone: '',
+        bin: '',
         currency: 'BDT',
         currencySymbol: '৳',
       };
@@ -312,15 +312,8 @@ export class StorageService {
     if (!this.isClient()) return;
     this.clearAuthSession();
     try {
-      // Clear every slipdo-related key in storage
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('slipdo_')) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      localStorage.clear();
+      sessionStorage.clear();
     } catch {}
   }
 }

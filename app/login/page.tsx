@@ -76,6 +76,21 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
 
+    const isDeleted =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('deleted') === 'true';
+
+    if (isDeleted) {
+      StorageService.wipeAllUserData();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      setAuthMode('signin');
+      showToast('Merchant account permanently deleted.');
+      return;
+    }
+
     const handleAuthRedirect = async () => {
       try {
         const isStep3Requested =
@@ -102,6 +117,9 @@ export default function LoginPage() {
 
           if (!isAlreadyConfigured) {
             setAuthMode('step3_store');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', '/login?step=3');
+            }
           } else {
             let activeList = cloudBusinesses || [];
             if (activeList.length === 0 && userMeta?.default_business) {
@@ -115,7 +133,9 @@ export default function LoginPage() {
             }
             StorageService.markStoreSetupCompleted(uid);
             showToast('Signed in successfully!');
-            setTimeout(() => router.replace('/'), 400);
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 300);
           }
         } else if (isStep3Requested) {
           setAuthMode('step3_store');
@@ -215,6 +235,9 @@ export default function LoginPage() {
 
         if (!isAlreadyConfigured) {
           setAuthMode('step3_store');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/login?step=3');
+          }
         } else {
           let activeList = cloudBusinesses || [];
           if (activeList.length === 0 && userMeta?.default_business) {
@@ -228,15 +251,22 @@ export default function LoginPage() {
           }
           StorageService.markStoreSetupCompleted(uid);
           showToast('Signed in successfully!');
-          setTimeout(() => router.replace('/'), 400);
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 300);
         }
       } else {
         const existing = StorageService.getBusinesses();
         if (!existing || existing.length === 0) {
           setAuthMode('step3_store');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/login?step=3');
+          }
         } else {
           showToast('Signed in successfully!');
-          setTimeout(() => router.replace('/'), 400);
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 300);
         }
       }
     } catch (err: any) {
@@ -283,6 +313,9 @@ export default function LoginPage() {
       if (res.data?.session) {
         showToast('Account registered! Now set up your storefront.');
         setAuthMode('step3_store');
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/login?step=3');
+        }
         return;
       }
 
@@ -358,6 +391,9 @@ export default function LoginPage() {
 
       showToast('Identity confirmed! Please configure your storefront.');
       setAuthMode('step3_store');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/login?step=3');
+      }
     } catch (err: any) {
       showToast(err?.message || 'Verification error', 'error');
       setLoading(false);
@@ -467,10 +503,6 @@ export default function LoginPage() {
       showToast('Please enter your store or business name', 'error');
       return;
     }
-    if (!storeAddress.trim()) {
-      showToast('Please provide your store or outlet address', 'error');
-      return;
-    }
 
     setLoading(true);
 
@@ -490,12 +522,13 @@ export default function LoginPage() {
     const codePrefix = prefixMap[storeCountryCode] || '+880';
     const cleanNum = storePhone.replace(/^[+\d\s-]+/, (m) => (m.startsWith('+') ? '' : m)).trim();
     const fullPhone = cleanNum ? `${codePrefix} ${cleanNum}` : '';
+    const cleanAddress = storeAddress.trim() || 'Online Store';
 
     const newBusiness: Business = {
       id: 'biz_' + Date.now(),
       name: storeName.trim(),
       category: storeCategory,
-      address: storeAddress.trim(),
+      address: cleanAddress,
       phone: fullPhone,
       bin: storeBin.trim(),
       currency: storeCurrency,
@@ -515,11 +548,11 @@ export default function LoginPage() {
         const uid = session.user.id;
         StorageService.setCloudBusinesses(uid, [newBusiness]);
         StorageService.markStoreSetupCompleted(uid);
-        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.error);
+        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.warn);
       }
 
       showToast('Storefront configured successfully! Welcome to SlipDo.');
-      setTimeout(() => router.replace('/'), 500);
+      window.location.href = '/';
     } catch (err: any) {
       showToast(err?.message || 'Error saving storefront details', 'error');
       setLoading(false);
@@ -887,17 +920,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Physical Outlet Address */}
+            {/* Physical Outlet Address (Optional) */}
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Physical Outlet Address *
+                Physical Outlet Address (Optional)
               </label>
               <input
                 type="text"
-                required
                 value={storeAddress}
                 onChange={(e) => setStoreAddress(e.target.value)}
-                placeholder="Shop 42, Level 2, Elephant Road, Dhaka"
+                placeholder="e.g. Banani, Dhaka or leave blank for Online Store"
                 className="w-full px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-500/15 transition-all shadow-2xs"
               />
             </div>
