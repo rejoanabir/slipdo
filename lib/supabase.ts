@@ -51,8 +51,8 @@ const SUPABASE_SERVICE_KEY =
 const SESSION_STORAGE_KEY = 'slipdo_supabase_session';
 
 export class SupabaseClient {
-  private url: string;
-  private anonKey: string;
+  public url: string;
+  public anonKey: string;
   private serviceKey: string;
 
   constructor(url = SUPABASE_URL, anonKey = SUPABASE_ANON_KEY, serviceKey = SUPABASE_SERVICE_KEY) {

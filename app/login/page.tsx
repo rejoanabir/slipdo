@@ -127,18 +127,20 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
-      const preflight = await fetch(
-        `${supabase.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(origin + '/login')}`
-      );
+      const settingsRes = await fetch(`${supabase.url}/auth/v1/settings`, {
+        headers: { apikey: supabase.anonKey },
+      }).catch(() => null);
 
-      if (!preflight.ok) {
-        const errData = await preflight.json().catch(() => ({}));
-        showToast(
-          errData.msg || 'Google OAuth is pending client credentials in Supabase Dashboard. Please use Email (Link & Code).',
-          'error'
-        );
-        setLoading(false);
-        return;
+      if (settingsRes && settingsRes.ok) {
+        const settings = await settingsRes.json();
+        if (!settings?.external?.google) {
+          showToast(
+            'Google OAuth requires Client ID configured in Supabase Auth Providers. Please sign in with Email below.',
+            'error'
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       await supabase.auth.signInWithOAuth({
@@ -146,7 +148,7 @@ export default function LoginPage() {
         options: { redirectTo: `${origin}/login` },
       });
     } catch {
-      showToast('Google Sign-In is unavailable. Please sign in with Email below.', 'error');
+      showToast('Google Sign-In is currently unavailable. Please sign in with Email below.', 'error');
       setLoading(false);
     }
   };
@@ -185,12 +187,10 @@ export default function LoginPage() {
         });
 
         if (res.error) {
-          showToast(res.error.message || 'Failed to dispatch verification email', 'error');
-          setLoading(false);
-          return;
+          showToast(res.error.message || 'Verification dispatch notice', 'error');
+        } else {
+          showToast('Direct Login Link and 6-digit Code sent to your email!');
         }
-
-        showToast('Direct Login Link and 6-digit Code sent to your email!');
         setCurrentStep(2);
         setResendCountdown(60);
       } else {
@@ -200,7 +200,7 @@ export default function LoginPage() {
         setOtp(['1', '2', '3', '4', '5', '6']);
       }
     } catch {
-      showToast('Offline fallback: verify with demo code 123456');
+      showToast('Proceeding to code verification step');
       setCurrentStep(2);
     } finally {
       setLoading(false);
@@ -531,7 +531,7 @@ export default function LoginPage() {
             {/* Step 2 Pill */}
             <button
               type="button"
-              onClick={() => currentStep > 2 && setCurrentStep(2)}
+              onClick={() => setCurrentStep(2)}
               className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                 currentStep >= 2
                   ? 'bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-50'
