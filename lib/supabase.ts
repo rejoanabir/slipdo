@@ -208,11 +208,11 @@ export class SupabaseClient {
           
           // Pre-flight check to verify if the provider is enabled and configured in Supabase
           try {
-            const probe = await fetch(url, { method: 'GET' });
-            if (!probe.ok) {
+            const probe = await fetch(url, { method: 'GET', redirect: 'manual' });
+            if (probe.status === 400) {
               const errData = await probe.json().catch(() => ({}));
               const msg = errData?.msg || errData?.message || 'Unsupported provider: provider is not enabled';
-              if (probe.status === 400 || msg.toLowerCase().includes('not enabled')) {
+              if (msg.toLowerCase().includes('not enabled') || msg.toLowerCase().includes('unsupported provider')) {
                 return {
                   data: null,
                   error: {
@@ -221,10 +221,9 @@ export class SupabaseClient {
                   },
                 };
               }
-              return { data: null, error: { message: msg } };
             }
           } catch {
-            // If probe is blocked by network policy or CORS, fall back to navigation
+            // If probe is redirected or opaque, proceed directly to window navigation
           }
 
           if (typeof window !== 'undefined') {
