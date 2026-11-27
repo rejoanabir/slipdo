@@ -554,7 +554,7 @@ export default function ReceiptCreatorPage() {
         </div>
       )}
 
-      <div id="printable-receipt-area">
+      <div id="printable-receipt-area" className={savedReceipt ? 'hidden' : ''}>
         <ReceiptPreview
           receipt={currentDraftReceipt}
           business={currentBiz}

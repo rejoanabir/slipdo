@@ -69,11 +69,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   const handleThermalPrint = () => {
+    const prevTitle = document.title;
+    document.title = `SlipDo_Receipt_${receipt.receiptNo || receipt.id}`;
     window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 1000);
   };
 
   const handleA4Print = () => {
+    const prevTitle = document.title;
+    document.title = `SlipDo_Invoice_${receipt.receiptNo || receipt.id}`;
     window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 1000);
   };
 
   return (

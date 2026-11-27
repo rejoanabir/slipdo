@@ -47,7 +47,7 @@
   height: 8px;
 }
 
-/* Print Optimization for Thermal POS and A4 Vouchers (Single Page Fit) */
+/* Print Optimization for Thermal POS and A4 Vouchers (Guaranteed Single Page Fit) */
 @media print {
   @page {
     size: auto;
@@ -65,14 +65,28 @@
     overflow: visible !important;
   }
 
-  /* Force hide app chrome, navigation, headers, footers and action bars */
+  /* Force hide all standard UI elements */
   header,
   nav,
   footer,
   aside,
-  .print\:hidden,
   button,
-  .fixed.inset-0.z-50:not(.print-modal-allow) {
+  input,
+  select,
+  textarea,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* De-elevate fixed modal overlays */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .fixed.inset-0 > div:not(#printable-receipt-area) {
     display: none !important;
   }
 
@@ -86,7 +100,7 @@
   }
 
   #printable-receipt-area {
-    position: absolute !important;
+    position: fixed !important;
     left: 0 !important;
     right: 0 !important;
     top: 0 !important;
@@ -96,13 +110,14 @@
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-    background: transparent !important;
+    background: #ffffff !important;
+    z-index: 999999 !important;
   }
 
   /* Compact paper layout for print to avoid spilling over 1 page */
   .receipt-paper {
     margin: 0 auto !important;
-    padding: 16px 20px !important;
+    padding: 12px 18px !important;
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
     border-radius: 8px !important;
@@ -110,6 +125,20 @@
     break-inside: avoid !important;
     height: auto !important;
     min-height: 0 !important;
+    max-width: 580px !important;
+  }
+
+  /* Tighten spacing during print for guaranteed single-page layout */
+  .receipt-paper p,
+  .receipt-paper span,
+  .receipt-paper td,
+  .receipt-paper th {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .receipt-paper img {
+    max-height: 48px !important;
   }
 
   tr, .avoid-break {

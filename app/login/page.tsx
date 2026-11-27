@@ -6,6 +6,7 @@ import { StorageService } from '../../lib/storage';
 import { supabase, supabaseDb } from '../../lib/supabase';
 import { Business, Currency } from '../../lib/types';
 import { CountryCodeSelect } from '../../components/CountryCodeSelect';
+import { SlipDoLogo } from '../../components/SlipDoLogo';
 import {
   SparklesIcon,
   MailIcon,
@@ -89,12 +90,29 @@ export default function LoginPage() {
             return;
           }
 
-          // Check if this user already has an active store in Supabase
+          // Check if this user already has an active store
           const cloudBusinesses = await supabaseDb.getBusinesses(uid);
-          if (!cloudBusinesses || cloudBusinesses.length === 0) {
+          const userMeta = session.user?.user_metadata;
+          const isAlreadyConfigured =
+            (cloudBusinesses && cloudBusinesses.length > 0) ||
+            userMeta?.store_setup_completed === true ||
+            !!userMeta?.default_business ||
+            StorageService.isStoreSetupCompleted(uid) ||
+            StorageService.getBusinesses().length > 0;
+
+          if (!isAlreadyConfigured) {
             setAuthMode('step3_store');
           } else {
-            StorageService.setCloudBusinesses(uid, cloudBusinesses);
+            let activeList = cloudBusinesses || [];
+            if (activeList.length === 0 && userMeta?.default_business) {
+              activeList = [userMeta.default_business];
+            }
+            if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
+              activeList = StorageService.getBusinesses();
+            }
+            if (activeList.length > 0) {
+              StorageService.setCloudBusinesses(uid, activeList);
+            }
             StorageService.markStoreSetupCompleted(uid);
             showToast('Signed in successfully!');
             setTimeout(() => router.replace('/'), 400);
@@ -183,14 +201,31 @@ export default function LoginPage() {
         localStorage.setItem('slipdo_remember_device', 'true');
       }
 
-      // Check if this specific merchant already has a configured business in Supabase
+      // Check if this specific merchant already has a configured business
       const uid = res.data?.session?.user?.id;
+      const userMeta = res.data?.session?.user?.user_metadata;
       if (uid) {
         const cloudBusinesses = await supabaseDb.getBusinesses(uid);
-        if (!cloudBusinesses || cloudBusinesses.length === 0) {
+        const isAlreadyConfigured =
+          (cloudBusinesses && cloudBusinesses.length > 0) ||
+          userMeta?.store_setup_completed === true ||
+          !!userMeta?.default_business ||
+          StorageService.isStoreSetupCompleted(uid) ||
+          StorageService.getBusinesses().length > 0;
+
+        if (!isAlreadyConfigured) {
           setAuthMode('step3_store');
         } else {
-          StorageService.setCloudBusinesses(uid, cloudBusinesses);
+          let activeList = cloudBusinesses || [];
+          if (activeList.length === 0 && userMeta?.default_business) {
+            activeList = [userMeta.default_business];
+          }
+          if (activeList.length === 0 && StorageService.getBusinesses().length > 0) {
+            activeList = StorageService.getBusinesses();
+          }
+          if (activeList.length > 0) {
+            StorageService.setCloudBusinesses(uid, activeList);
+          }
           StorageService.markStoreSetupCompleted(uid);
           showToast('Signed in successfully!');
           setTimeout(() => router.replace('/'), 400);
@@ -470,18 +505,18 @@ export default function LoginPage() {
     };
 
     try {
-      // 1. Save to Supabase cloud if session is present
+      // 1. Save to user-scoped local storage immediately
+      StorageService.saveBusiness(newBusiness);
+      StorageService.setActiveBusiness(newBusiness.id);
+
+      // 2. Save to Supabase cloud and user_metadata if session is present
       const session = supabase.getSession();
       if (session?.user?.id) {
         const uid = session.user.id;
-        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.error);
         StorageService.setCloudBusinesses(uid, [newBusiness]);
         StorageService.markStoreSetupCompleted(uid);
+        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.error);
       }
-
-      // 2. Save to user-scoped local storage
-      StorageService.saveBusiness(newBusiness);
-      StorageService.setActiveBusiness(newBusiness.id);
 
       showToast('Storefront configured successfully! Welcome to SlipDo.');
       setTimeout(() => router.replace('/'), 500);
@@ -557,9 +592,7 @@ export default function LoginPage() {
         ) : (
           <div>
             <div className="flex items-center justify-center gap-2.5 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md shadow-slate-900/20">
-                <SparklesIcon className="w-5 h-5 text-white" />
-              </div>
+              <SlipDoLogo size={42} lockup="official" />
               <span className="text-2xl font-black tracking-tight text-slate-900">SlipDo</span>
             </div>
 

@@ -145,7 +145,10 @@ export default function SettingsPage() {
     try {
       const session = supabase.getSession();
       if (session?.user?.id) {
-        await supabaseDb.deleteAccount(session.user.id);
+        const deleted = await supabaseDb.deleteAccount(session.user.id);
+        if (!deleted) {
+          throw new Error('Database failed to permanently purge user record. Please try again.');
+        }
       }
       await supabase.auth.signOut();
       StorageService.wipeAllUserData();

@@ -300,6 +300,43 @@ export class SupabaseClient {
         }
       },
 
+      updateUser: async (attributes: {
+        data?: Record<string, any>;
+        email?: string;
+        password?: string;
+      }): Promise<AuthResponse> => {
+        try {
+          const session = this.getSession();
+          if (!session?.access_token) {
+            return { data: { user: null, session: null }, error: { message: 'No active session' } };
+          }
+          const res = await fetch(`${this.url}/auth/v1/user`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: this.anonKey,
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify(attributes),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            return {
+              data: { user: null, session: null },
+              error: { message: data.msg || data.message || 'Failed to update user profile' },
+            };
+          }
+          const updatedSession = { ...session, user: data };
+          this.setSession(updatedSession);
+          return { data: { user: data, session: updatedSession }, error: null };
+        } catch (err: any) {
+          return {
+            data: { user: null, session: null },
+            error: { message: err?.message || 'Network error updating user' },
+          };
+        }
+      },
+
       signOut: async (): Promise<{ error: any }> => {
         try {
           const session = this.getSession();
@@ -553,20 +590,32 @@ export const supabaseDb = {
     const { data, error } = await supabase.fetchPostgrest(
       `/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}&order=is_default.desc,created_at.asc`
     );
-    if (error || !Array.isArray(data)) return [];
-    return data.map((b: any) => ({
-      id: b.id,
-      name: b.name,
-      category: b.category,
-      address: b.address,
-      phone: b.phone || '',
-      bin: b.bin || '',
-      currency: b.currency || 'BDT',
-      currencySymbol: b.currency_symbol || '৳',
-      logoUrl: b.logo_url || undefined,
-      signatureUrl: b.signature_url || undefined,
-      customTemplate: b.custom_template || undefined,
-    }));
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        category: b.category,
+        address: b.address,
+        phone: b.phone || '',
+        bin: b.bin || '',
+        currency: b.currency || 'BDT',
+        currencySymbol: b.currency_symbol || '৳',
+        logoUrl: b.logo_url || undefined,
+        signatureUrl: b.signature_url || undefined,
+        customTemplate: b.custom_template || undefined,
+      }));
+    }
+
+    // Secondary fallback: Check user_metadata on the active session
+    try {
+      const session = supabase.getSession();
+      const metaBiz = session?.user?.user_metadata?.default_business;
+      if (metaBiz && metaBiz.name) {
+        return [metaBiz];
+      }
+    } catch {}
+
+    return [];
   },
 
   async saveBusiness(biz: Business, merchantId: string): Promise<boolean> {
@@ -585,6 +634,20 @@ export const supabaseDb = {
       custom_template: biz.customTemplate || null,
       is_default: true,
     };
+
+    // 1. Sync directly to user_metadata on the merchant's auth record in Supabase
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          store_setup_completed: true,
+          default_business: biz,
+        },
+      });
+    } catch (err) {
+      console.warn('Failed to sync business into user_metadata:', err);
+    }
+
+    // 2. Upsert into businesses table in PostgREST
     const { error } = await supabase.fetchPostgrest(`/businesses`, {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
@@ -702,22 +765,20 @@ export const supabaseDb = {
     if (!merchantId) return false;
     try {
       // 1. Permanently delete user from auth.users and all merchant tables via SECURITY DEFINER procedure
-      await supabase.fetchPostgrest(`/rpc/delete_merchant_account`, {
+      const { data, error } = await supabase.fetchPostgrest(`/rpc/delete_merchant_account`, {
         method: 'POST',
-        body: JSON.stringify({}),
+        body: JSON.stringify({ target_user_id: merchantId }),
       });
 
-      // 2. Fallback table cleanup
-      await supabase.fetchPostgrest(`/receipts?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      }).catch(() => {});
-      await supabase.fetchPostgrest(`/customers?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      }).catch(() => {});
-      await supabase.fetchPostgrest(`/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
-        method: 'DELETE',
-      }).catch(() => {});
-      return true;
+      if (error) {
+        console.error('Failed to execute delete_merchant_account RPC:', error);
+        return false;
+      }
+
+      // 2. Clear locally cached auth session immediately upon confirmed database purge
+      supabase.clearSession();
+
+      return data === true;
     } catch (err) {
       console.error('Failed to delete merchant account:', err);
       return false;

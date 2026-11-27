@@ -98,7 +98,10 @@ export default function ProfilePage() {
     try {
       const session = supabase.getSession();
       if (session?.user?.id) {
-        await supabaseDb.deleteAccount(session.user.id);
+        const deleted = await supabaseDb.deleteAccount(session.user.id);
+        if (!deleted) {
+          throw new Error('Database failed to permanently purge user record. Please try again.');
+        }
       }
       await supabase.auth.signOut();
       StorageService.wipeAllUserData();
@@ -110,6 +113,28 @@ export default function ProfilePage() {
       showToast('Error deleting account: ' + (err?.message || 'Unknown error'));
       setIsDeleting(false);
     }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeBiz) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Logo file size must be under 2MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const updated = { ...activeBiz, logoUrl: dataUrl };
+      setActiveBiz(updated);
+      StorageService.saveBusiness(updated);
+      const session = supabase.getSession();
+      if (session?.user?.id) {
+        await supabaseDb.saveBusiness(updated, session.user.id).catch(console.error);
+      }
+      showToast('Store logo updated successfully!');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -176,8 +201,14 @@ export default function ProfilePage() {
         <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-soft">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-display font-extrabold text-xl shadow-md shrink-0">
-                {merchantName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'SO'}
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                {activeBiz.logoUrl ? (
+                  <img src={activeBiz.logoUrl} alt={activeBiz.name} className="w-full h-full object-contain p-1.5 bg-white" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center font-display font-extrabold text-xl">
+                    {merchantName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'SO'}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -291,6 +322,36 @@ export default function ProfilePage() {
               </label>
               <div className="px-4 py-2.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-800">
                 {activeBiz.address}
+              </div>
+            </div>
+
+            {/* Storefront Logo Upload & Preview */}
+            <div className="sm:col-span-2 pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {activeBiz.logoUrl ? (
+                    <img src={activeBiz.logoUrl} alt="Store logo" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <BuildingIcon className="w-6 h-6 text-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Storefront Logo</h4>
+                  <p className="text-[11px] text-slate-400">
+                    {activeBiz.logoUrl ? 'Configured and active on all vouchers' : 'No logo uploaded yet'}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="px-4 py-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200/60 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                  <span>{activeBiz.logoUrl ? 'Change Logo' : 'Upload Logo'}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
           </div>

@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand / Logo + Active Storefront Switcher */}
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <SlipDoLogo size={36} lockup="sparkle-dark" className="group-hover:scale-105 transition-transform" />
+            <SlipDoLogo size={36} lockup="official" className="group-hover:scale-105 transition-transform" />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-display font-extrabold text-lg tracking-tight text-slate-900 leading-none">
@@ -60,7 +60,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Switch storefront outlet"
           >
             {business.logoUrl ? (
-              <img src={business.logoUrl} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-slate-200" />
+              <img
+                src={business.logoUrl}
+                alt={business.name}
+                className="w-5 h-5 rounded-md object-contain bg-white border border-slate-200 shrink-0 p-0.5"
+              />
             ) : (
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
             )}
