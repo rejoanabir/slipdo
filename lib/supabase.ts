@@ -681,11 +681,45 @@ export const supabaseDb = {
   },
 
   async getReceiptByToken(token: string): Promise<Receipt | null> {
+    // 1. Try secure cryptographic RPC lookup first
+    const rpcRes = await supabase.fetchPostgrest(`/rpc/get_receipt_by_token`, {
+      method: 'POST',
+      body: JSON.stringify({ lookup_token: token }),
+    });
+    if (rpcRes.data && Array.isArray(rpcRes.data) && rpcRes.data.length > 0) {
+      return mapDbReceiptToModel(rpcRes.data[0]);
+    }
+
+    // 2. Direct fallback lookup by token
     const { data, error } = await supabase.fetchPostgrest(
       `/receipts?token=eq.${encodeURIComponent(token)}&limit=1`
     );
     if (error || !Array.isArray(data) || data.length === 0) return null;
     return mapDbReceiptToModel(data[0]);
+  },
+
+  async deleteAccount(merchantId: string): Promise<boolean> {
+    if (!merchantId) return false;
+    try {
+      // Delete all merchant data in database
+      await supabase.fetchPostgrest(`/receipts?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
+      });
+      await supabase.fetchPostgrest(`/customers?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
+      });
+      await supabase.fetchPostgrest(`/businesses?merchant_id=eq.${encodeURIComponent(merchantId)}`, {
+        method: 'DELETE',
+      });
+      await supabase.fetchPostgrest(`/rpc/delete_merchant_account`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }).catch(() => {});
+      return true;
+    } catch (err) {
+      console.error('Failed to delete merchant account:', err);
+      return false;
+    }
   },
 
   async saveReceipt(receipt: Receipt, merchantId: string, businessId?: string): Promise<boolean> {

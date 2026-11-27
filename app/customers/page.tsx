@@ -102,16 +102,15 @@ export default function CustomersPage() {
 
     // Sync with Supabase cloud
     if (session?.user?.id) {
+      const uid = session.user.id;
       Promise.all([
-        supabaseDb.getCustomers(session.user.id),
-        supabaseDb.getReceipts(session.user.id),
+        supabaseDb.getCustomers(uid),
+        supabaseDb.getReceipts(uid),
       ]).then(([cloudCustomers, cloudReceipts]) => {
-        if (cloudCustomers && cloudCustomers.length > 0) {
-          setCustomers(cloudCustomers);
-        }
-        if (cloudReceipts && cloudReceipts.length > 0) {
-          setReceipts(cloudReceipts);
-        }
+        StorageService.setCloudCustomers(uid, cloudCustomers || []);
+        StorageService.setCloudReceipts(uid, cloudReceipts || []);
+        setCustomers(cloudCustomers || []);
+        setReceipts(cloudReceipts || []);
       }).catch(console.error);
     }
   }, [router]);

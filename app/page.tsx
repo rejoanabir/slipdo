@@ -58,18 +58,34 @@ export default function DashboardPage() {
 
       // Sync with Supabase cloud if merchant session is active
       if (session?.user?.id) {
-        Promise.all([
-          supabaseDb.getReceipts(session.user.id),
-          supabaseDb.getBusinesses(session.user.id),
-        ]).then(([cloudReceipts, cloudBusinesses]) => {
-          if (cloudReceipts || cloudBusinesses) {
-            StorageService.mergeCloudData(cloudReceipts || [], cloudBusinesses || []);
-            setReceipts(StorageService.getReceipts());
-            const updatedBiz = StorageService.getBusinesses();
-            setBusinesses(updatedBiz);
-            setActiveBiz(StorageService.getActiveBusiness());
+        const uid = session.user.id;
+        try {
+          const [cloudReceipts, cloudBusinesses] = await Promise.all([
+            supabaseDb.getReceipts(uid),
+            supabaseDb.getBusinesses(uid),
+          ]);
+
+          // If the merchant has no business created yet, route directly to Step 3 Storefront Setup
+          if (!cloudBusinesses || cloudBusinesses.length === 0 || !StorageService.isStoreSetupCompleted(uid)) {
+            router.replace('/login?step=3');
+            return;
           }
-        }).catch(console.error);
+
+          StorageService.setCloudReceipts(uid, cloudReceipts || []);
+          StorageService.setCloudBusinesses(uid, cloudBusinesses);
+          setReceipts(cloudReceipts || []);
+          setBusinesses(cloudBusinesses);
+          setActiveBiz(cloudBusinesses[0]);
+        } catch (err) {
+          console.error('Data load error:', err);
+        }
+      } else {
+        const bList = StorageService.getBusinesses();
+        const active = StorageService.getActiveBusiness();
+        const rList = StorageService.getReceipts();
+        setBusinesses(bList);
+        setActiveBiz(active);
+        setReceipts(rList);
       }
     };
 

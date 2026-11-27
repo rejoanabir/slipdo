@@ -1,52 +1,77 @@
-import { Business, Customer, Receipt, LogoLockup, FigmaChecklistItem, ReceiptTotals } from './types';
-import { INITIAL_BUSINESSES, INITIAL_CUSTOMERS, INITIAL_RECEIPTS, FIGMA_CHECKLIST_ITEMS } from './mockData';
-
-const KEYS = {
-  ACTIVE_BIZ: 'slipdo_active_biz_v3',
-  BUSINESSES: 'slipdo_businesses_v3',
-  CUSTOMERS: 'slipdo_customers_v3',
-  RECEIPTS: 'slipdo_receipts_v3',
-  CHECKLIST: 'slipdo_checklist_v3',
-  LOGO_LOCKUP: 'slipdo_logo_lockup_v3',
-  LANG: 'slipdo_language',
-  AUTH_USER: 'slipdo_auth_user_v3',
-  AUTH_TOKEN: 'slipdo_auth_token_v3',
-};
+import { Business, Customer, Receipt, LogoLockup, FigmaChecklistItem } from './types';
+import { INITIAL_BUSINESSES, FIGMA_CHECKLIST_ITEMS } from './mockData';
 
 export class StorageService {
   private static isClient(): boolean {
     return typeof window !== 'undefined';
   }
 
+  // Current User ID resolver (guarantees zero cross-account contamination)
+  static getCurrentUserId(): string {
+    if (!this.isClient()) return 'guest';
+    try {
+      const sessionStr = localStorage.getItem('slipdo_supabase_session');
+      if (sessionStr) {
+        const parsed = JSON.parse(sessionStr);
+        if (parsed?.user?.id) return parsed.user.id;
+      }
+      const authUser = localStorage.getItem('slipdo_auth_user_v3');
+      if (authUser) {
+        const parsed = JSON.parse(authUser);
+        if (parsed?.id) return parsed.id;
+      }
+    } catch {}
+    return 'guest';
+  }
+
+  // Generates user-scoped storage key
+  private static getUserKey(baseKey: string): string {
+    const uid = this.getCurrentUserId();
+    return `slipdo_${uid}_${baseKey}`;
+  }
+
+  // --- Businesses ---
   static getBusinesses(): Business[] {
     if (!this.isClient()) return INITIAL_BUSINESSES;
+    const uid = this.getCurrentUserId();
     try {
-      const data = localStorage.getItem(KEYS.BUSINESSES);
+      const data = localStorage.getItem(this.getUserKey('businesses'));
       if (!data) {
-        localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(INITIAL_BUSINESSES));
-        return INITIAL_BUSINESSES;
+        if (uid === 'guest') {
+          return INITIAL_BUSINESSES;
+        }
+        return [];
       }
       return JSON.parse(data);
     } catch {
-      return INITIAL_BUSINESSES;
+      return uid === 'guest' ? INITIAL_BUSINESSES : [];
     }
   }
 
   static getActiveBusiness(): Business {
     const list = this.getBusinesses();
-    if (!this.isClient()) return list[0];
+    if (!this.isClient()) return list[0] || INITIAL_BUSINESSES[0];
     try {
-      const activeId = localStorage.getItem(KEYS.ACTIVE_BIZ);
+      const activeId = localStorage.getItem(this.getUserKey('active_biz'));
       const found = list.find((b) => b.id === activeId);
-      return found || list[0];
+      return found || list[0] || {
+        id: 'biz_' + this.getCurrentUserId().slice(0, 8),
+        name: 'My Store',
+        category: 'General Retail & Services',
+        address: 'Dhaka, Bangladesh',
+        phone: '+880 1700-000000',
+        bin: '000000000-0101',
+        currency: 'BDT',
+        currencySymbol: '৳',
+      };
     } catch {
-      return list[0];
+      return list[0] || INITIAL_BUSINESSES[0];
     }
   }
 
   static setActiveBusiness(bizId: string): void {
     if (!this.isClient()) return;
-    localStorage.setItem(KEYS.ACTIVE_BIZ, bizId);
+    localStorage.setItem(this.getUserKey('active_biz'), bizId);
   }
 
   static saveBusiness(business: Business): void {
@@ -58,21 +83,30 @@ export class StorageService {
       list.push(business);
     }
     if (this.isClient()) {
-      localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(list));
+      localStorage.setItem(this.getUserKey('businesses'), JSON.stringify(list));
+      localStorage.setItem(this.getUserKey('active_biz'), business.id);
     }
   }
 
+  static setCloudBusinesses(userId: string, businesses: Business[]): void {
+    if (!this.isClient() || !userId) return;
+    const key = `slipdo_${userId}_businesses`;
+    localStorage.setItem(key, JSON.stringify(businesses));
+    if (businesses.length > 0) {
+      const activeKey = `slipdo_${userId}_active_biz`;
+      localStorage.setItem(activeKey, businesses[0].id);
+    }
+  }
+
+  // --- Customers ---
   static getCustomers(): Customer[] {
-    if (!this.isClient()) return INITIAL_CUSTOMERS;
+    if (!this.isClient()) return [];
     try {
-      const data = localStorage.getItem(KEYS.CUSTOMERS);
-      if (!data) {
-        localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(INITIAL_CUSTOMERS));
-        return INITIAL_CUSTOMERS;
-      }
+      const data = localStorage.getItem(this.getUserKey('customers'));
+      if (!data) return [];
       return JSON.parse(data);
     } catch {
-      return INITIAL_CUSTOMERS;
+      return [];
     }
   }
 
@@ -85,22 +119,26 @@ export class StorageService {
       list.unshift(cust);
     }
     if (this.isClient()) {
-      localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(list));
+      localStorage.setItem(this.getUserKey('customers'), JSON.stringify(list));
     }
     return list;
   }
 
+  static setCloudCustomers(userId: string, customers: Customer[]): void {
+    if (!this.isClient() || !userId) return;
+    const key = `slipdo_${userId}_customers`;
+    localStorage.setItem(key, JSON.stringify(customers));
+  }
+
+  // --- Receipts ---
   static getReceipts(): Receipt[] {
-    if (!this.isClient()) return INITIAL_RECEIPTS;
+    if (!this.isClient()) return [];
     try {
-      const data = localStorage.getItem(KEYS.RECEIPTS);
-      if (!data) {
-        localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(INITIAL_RECEIPTS));
-        return INITIAL_RECEIPTS;
-      }
+      const data = localStorage.getItem(this.getUserKey('receipts'));
+      if (!data) return [];
       return JSON.parse(data);
     } catch {
-      return INITIAL_RECEIPTS;
+      return [];
     }
   }
 
@@ -119,7 +157,7 @@ export class StorageService {
     }
 
     if (this.isClient()) {
-      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
+      localStorage.setItem(this.getUserKey('receipts'), JSON.stringify(list));
     }
 
     // Link customer stats
@@ -154,7 +192,7 @@ export class StorageService {
   static deleteReceipt(id: string): Receipt[] {
     const list = this.getReceipts().filter((r) => r.id !== id && r.receiptNo !== id);
     if (this.isClient()) {
-      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
+      localStorage.setItem(this.getUserKey('receipts'), JSON.stringify(list));
     }
     return list;
   }
@@ -165,17 +203,36 @@ export class StorageService {
     if (target) {
       target.status = status;
       if (this.isClient()) {
-        localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(list));
+        localStorage.setItem(this.getUserKey('receipts'), JSON.stringify(list));
       }
       return target;
     }
     return null;
   }
 
+  // Cloud Sync Handler (Never leaks across user accounts)
+  static setCloudReceipts(userId: string, receipts: Receipt[]): void {
+    if (!this.isClient() || !userId) return;
+    const key = `slipdo_${userId}_receipts`;
+    localStorage.setItem(key, JSON.stringify(receipts));
+  }
+
+  // --- Store Setup Completion Flag ---
+  static isStoreSetupCompleted(userId: string): boolean {
+    if (!this.isClient() || !userId) return false;
+    return localStorage.getItem(`slipdo_${userId}_setup_completed`) === 'true';
+  }
+
+  static markStoreSetupCompleted(userId: string): void {
+    if (!this.isClient() || !userId) return;
+    localStorage.setItem(`slipdo_${userId}_setup_completed`, 'true');
+  }
+
+  // --- Brand Preferences ---
   static getLogoLockup(): LogoLockup {
     if (!this.isClient()) return 'voucher-check';
     try {
-      return (localStorage.getItem(KEYS.LOGO_LOCKUP) as LogoLockup) || 'voucher-check';
+      return (localStorage.getItem(this.getUserKey('logo_lockup')) as LogoLockup) || 'voucher-check';
     } catch {
       return 'voucher-check';
     }
@@ -183,15 +240,15 @@ export class StorageService {
 
   static setLogoLockup(lockup: LogoLockup): void {
     if (!this.isClient()) return;
-    localStorage.setItem(KEYS.LOGO_LOCKUP, lockup);
+    localStorage.setItem(this.getUserKey('logo_lockup'), lockup);
   }
 
   static getChecklist(): FigmaChecklistItem[] {
     if (!this.isClient()) return FIGMA_CHECKLIST_ITEMS;
     try {
-      const data = localStorage.getItem(KEYS.CHECKLIST);
+      const data = localStorage.getItem('slipdo_checklist_v3');
       if (!data) {
-        localStorage.setItem(KEYS.CHECKLIST, JSON.stringify(FIGMA_CHECKLIST_ITEMS));
+        localStorage.setItem('slipdo_checklist_v3', JSON.stringify(FIGMA_CHECKLIST_ITEMS));
         return FIGMA_CHECKLIST_ITEMS;
       }
       return JSON.parse(data);
@@ -206,7 +263,7 @@ export class StorageService {
     if (item) {
       item.done = !item.done;
       if (this.isClient()) {
-        localStorage.setItem(KEYS.CHECKLIST, JSON.stringify(list));
+        localStorage.setItem('slipdo_checklist_v3', JSON.stringify(list));
       }
     }
     return list;
@@ -216,7 +273,7 @@ export class StorageService {
   static getAuthUser(): { id: string; email: string; name: string; phone?: string; role: string } | null {
     if (!this.isClient()) return null;
     try {
-      const data = localStorage.getItem(KEYS.AUTH_USER);
+      const data = localStorage.getItem('slipdo_auth_user_v3');
       if (!data) return null;
       return JSON.parse(data);
     } catch {
@@ -226,41 +283,44 @@ export class StorageService {
 
   static setAuthUser(user: { id: string; email: string; name: string; phone?: string; role: string }): void {
     if (!this.isClient()) return;
-    localStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
+    localStorage.setItem('slipdo_auth_user_v3', JSON.stringify(user));
   }
 
   static clearAuthSession(): void {
     if (!this.isClient()) return;
-    localStorage.removeItem(KEYS.AUTH_USER);
-    localStorage.removeItem(KEYS.AUTH_TOKEN);
+    const uid = this.getCurrentUserId();
+    // Clean all user-scoped caches for this user
+    localStorage.removeItem(`slipdo_${uid}_receipts`);
+    localStorage.removeItem(`slipdo_${uid}_businesses`);
+    localStorage.removeItem(`slipdo_${uid}_customers`);
+    localStorage.removeItem(`slipdo_${uid}_active_biz`);
+    localStorage.removeItem(`slipdo_${uid}_setup_completed`);
+    localStorage.removeItem(`slipdo_${uid}_logo_lockup`);
+
+    // Clean legacy global keys
+    localStorage.removeItem('slipdo_receipts_v3');
+    localStorage.removeItem('slipdo_businesses_v3');
+    localStorage.removeItem('slipdo_customers_v3');
+    localStorage.removeItem('slipdo_active_biz_v3');
+    localStorage.removeItem('slipdo_auth_user_v3');
+    localStorage.removeItem('slipdo_auth_token_v3');
+    localStorage.removeItem('slipdo_auth_session');
     localStorage.removeItem('slipdo_supabase_session');
   }
 
-  static mergeCloudData(cloudReceipts: Receipt[] = [], cloudBusinesses: Business[] = []): { receipts: Receipt[]; businesses: Business[] } {
-    if (!this.isClient()) return { receipts: [], businesses: [] };
-    
-    let finalBusinesses = this.getBusinesses();
-    if (cloudBusinesses && cloudBusinesses.length > 0) {
-      const map = new Map<string, Business>();
-      finalBusinesses.forEach((b) => map.set(b.id, b));
-      cloudBusinesses.forEach((b) => map.set(b.id, b));
-      finalBusinesses = Array.from(map.values());
-      localStorage.setItem(KEYS.BUSINESSES, JSON.stringify(finalBusinesses));
-      const currentActive = localStorage.getItem(KEYS.ACTIVE_BIZ);
-      if (!currentActive || !finalBusinesses.find((b) => b.id === currentActive)) {
-        localStorage.setItem(KEYS.ACTIVE_BIZ, finalBusinesses[0].id);
+  static wipeAllUserData(): void {
+    if (!this.isClient()) return;
+    this.clearAuthSession();
+    try {
+      // Clear every slipdo-related key in storage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('slipdo_')) {
+          keysToRemove.push(key);
+        }
       }
-    }
-
-    let finalReceipts = this.getReceipts();
-    if (cloudReceipts && cloudReceipts.length > 0) {
-      const map = new Map<string, Receipt>();
-      finalReceipts.forEach((r) => map.set(r.token || r.id, r));
-      cloudReceipts.forEach((r) => map.set(r.token || r.id, r));
-      finalReceipts = Array.from(map.values());
-      localStorage.setItem(KEYS.RECEIPTS, JSON.stringify(finalReceipts));
-    }
-
-    return { receipts: finalReceipts, businesses: finalBusinesses };
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
   }
 }

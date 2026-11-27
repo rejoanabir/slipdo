@@ -54,13 +54,12 @@ export default function ReceiptsArchivePage() {
 
     // Sync with Supabase cloud
     if (session?.user?.id) {
+      const uid = session.user.id;
       supabaseDb
-        .getReceipts(session.user.id)
+        .getReceipts(uid)
         .then((cloudReceipts) => {
-          if (cloudReceipts && cloudReceipts.length > 0) {
-            StorageService.mergeCloudData(cloudReceipts, []);
-            setReceipts(StorageService.getReceipts());
-          }
+          StorageService.setCloudReceipts(uid, cloudReceipts || []);
+          setReceipts(cloudReceipts || []);
         })
         .catch(console.error);
     }

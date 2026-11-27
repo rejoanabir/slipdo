@@ -59,7 +59,7 @@ export default function LoginPage() {
   // Step 3 Storefront Setup Fields
   const [storeName, setStoreName] = useState('');
   const [storeCategory, setStoreCategory] = useState(CATEGORIES[0]);
-  const [storeCountryCode, setStoreCountryCode] = useState('+880'); // Default BD
+  const [storeCountryCode, setStoreCountryCode] = useState('BD'); // Default BD
   const [storePhone, setStorePhone] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [storeCurrency, setStoreCurrency] = useState<Currency>('BDT');
@@ -77,16 +77,34 @@ export default function LoginPage() {
 
     const handleAuthRedirect = async () => {
       try {
-        const session = await supabase.handleAuthCallback();
-        if (session?.user) {
-          // Check if user already has an active store
-          const existing = StorageService.getBusinesses();
-          if (existing && existing.length > 0 && existing[0].name !== 'My Store') {
+        const isStep3Requested =
+          typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('step') === '3';
+
+        const session = (await supabase.handleAuthCallback()) || supabase.getSession();
+        if (session?.user?.id) {
+          const uid = session.user.id;
+          if (isStep3Requested) {
+            setAuthMode('step3_store');
+            return;
+          }
+
+          // Check if this user already has an active store in Supabase
+          const cloudBusinesses = await supabaseDb.getBusinesses(uid);
+          if (
+            !cloudBusinesses ||
+            cloudBusinesses.length === 0 ||
+            cloudBusinesses[0].name === 'My Store'
+          ) {
+            setAuthMode('step3_store');
+          } else {
+            StorageService.setCloudBusinesses(uid, cloudBusinesses);
+            StorageService.markStoreSetupCompleted(uid);
             showToast('Signed in successfully!');
             setTimeout(() => router.replace('/'), 400);
-          } else {
-            setAuthMode('step3_store');
           }
+        } else if (isStep3Requested) {
+          setAuthMode('step3_store');
         }
       } catch (err) {
         console.error('Redirect auth handling error:', err);
@@ -169,13 +187,26 @@ export default function LoginPage() {
         localStorage.setItem('slipdo_remember_device', 'true');
       }
 
-      // Check if user has an existing business configured
-      const existing = StorageService.getBusinesses();
-      if (!existing || existing.length === 0 || existing[0].name === 'My Store') {
-        setAuthMode('step3_store');
+      // Check if this specific merchant already has a configured business in Supabase
+      const uid = res.data?.session?.user?.id;
+      if (uid) {
+        const cloudBusinesses = await supabaseDb.getBusinesses(uid);
+        if (!cloudBusinesses || cloudBusinesses.length === 0 || cloudBusinesses[0].name === 'My Store') {
+          setAuthMode('step3_store');
+        } else {
+          StorageService.setCloudBusinesses(uid, cloudBusinesses);
+          StorageService.markStoreSetupCompleted(uid);
+          showToast('Signed in successfully!');
+          setTimeout(() => router.replace('/'), 400);
+        }
       } else {
-        showToast('Signed in successfully!');
-        setTimeout(() => router.replace('/'), 400);
+        const existing = StorageService.getBusinesses();
+        if (!existing || existing.length === 0 || existing[0].name === 'My Store') {
+          setAuthMode('step3_store');
+        } else {
+          showToast('Signed in successfully!');
+          setTimeout(() => router.replace('/'), 400);
+        }
       }
     } catch (err: any) {
       showToast(err?.message || 'Authentication error occurred', 'error');
@@ -412,7 +443,22 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const fullPhone = storePhone.trim() ? `${storeCountryCode} ${storePhone.trim()}` : '';
+    const prefixMap: Record<string, string> = {
+      BD: '+880',
+      US: '+1',
+      GB: '+44',
+      IN: '+91',
+      AE: '+971',
+      SA: '+966',
+      SG: '+65',
+      MY: '+60',
+      PK: '+92',
+      CA: '+1',
+      AU: '+61',
+    };
+    const codePrefix = prefixMap[storeCountryCode] || '+880';
+    const cleanNum = storePhone.replace(/^[+\d\s-]+/, (m) => (m.startsWith('+') ? '' : m)).trim();
+    const fullPhone = cleanNum ? `${codePrefix} ${cleanNum}` : '';
 
     const newBusiness: Business = {
       id: 'biz_' + Date.now(),
@@ -428,15 +474,18 @@ export default function LoginPage() {
     };
 
     try {
-      // 1. Save to local storage
-      StorageService.saveBusiness(newBusiness);
-      StorageService.setActiveBusiness(newBusiness.id);
-
-      // 2. Save to Supabase cloud if session is present
+      // 1. Save to Supabase cloud if session is present
       const session = supabase.getSession();
       if (session?.user?.id) {
-        await supabaseDb.saveBusiness(newBusiness, session.user.id).catch(console.error);
+        const uid = session.user.id;
+        await supabaseDb.saveBusiness(newBusiness, uid).catch(console.error);
+        StorageService.setCloudBusinesses(uid, [newBusiness]);
+        StorageService.markStoreSetupCompleted(uid);
       }
+
+      // 2. Save to user-scoped local storage
+      StorageService.saveBusiness(newBusiness);
+      StorageService.setActiveBusiness(newBusiness.id);
 
       showToast('Storefront configured successfully! Welcome to SlipDo.');
       setTimeout(() => router.replace('/'), 500);
