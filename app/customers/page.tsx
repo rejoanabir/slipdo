@@ -344,8 +344,8 @@ export default function CustomersPage() {
       {/* Preview Modal for Customer Receipt */}
       {previewReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto thin-scroll p-4 sm:p-6 shadow-2xl relative space-y-4 animate-scale-up">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto thin-scroll p-4 sm:p-6 shadow-2xl relative space-y-4 animate-scale-up print:p-0 print:m-0 print:border-none print:shadow-none">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 print:hidden">
               <span className="font-display font-bold text-sm text-slate-900">Digital Receipt Preview</span>
               <button
                 onClick={() => setPreviewReceipt(null)}

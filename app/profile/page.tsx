@@ -338,25 +338,25 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Subscription Banner */}
-        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 text-white rounded-3xl p-5 sm:p-6 shadow-elevated">
+        {/* Merchant Account Status */}
+        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-elevated">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-2">
-                <ZapIcon className="w-3 h-3 text-blue-400" />
-                <span>Active Subscription</span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase tracking-wider mb-2">
+                <CheckIcon className="w-3 h-3 text-emerald-400" />
+                <span>Free Merchant Account</span>
               </div>
               <h2 className="font-display font-extrabold text-xl sm:text-2xl text-white">
-                SlipDo Pro Merchant Tier
+                Full Platform Access
               </h2>
               <p className="text-xs text-slate-300 mt-1">
-                Active Tier · Verified digital receipts & unlimited cloud backup
+                Unlimited digital receipts, instant WhatsApp delivery & cloud storage included
               </p>
             </div>
 
             <div className="text-right sm:text-right w-full sm:w-auto">
               <div className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold backdrop-blur-xs">
-                Usage: <span className="font-mono text-blue-300 font-bold">{StorageService.getReceipts().length}</span> / Unlimited Receipts
+                Vouchers Created: <span className="font-mono text-emerald-300 font-bold">{StorageService.getReceipts().length}</span>
               </div>
             </div>
           </div>

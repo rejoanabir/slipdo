@@ -12,7 +12,6 @@ import { BottomNav } from '../components/BottomNav';
 import { BusinessDrawer } from '../components/BusinessDrawer';
 import { ShareModal } from '../components/ShareModal';
 import { ReceiptPreview } from '../components/ReceiptPreview';
-import { SSLCommerzModal } from '../components/SSLCommerzModal';
 import { CheckIcon, ZapIcon, EyeIcon, ExternalLinkIcon, XIcon, ReceiptIcon } from '../components/Icons';
 
 export default function DashboardPage() {
@@ -28,7 +27,6 @@ export default function DashboardPage() {
 
   // Modals
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
-  const [isSslModalOpen, setIsSslModalOpen] = useState(false);
   const [shareReceipt, setShareReceipt] = useState<Receipt | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<Receipt | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -237,13 +235,6 @@ export default function DashboardPage() {
               >
                 + Create Receipt
               </Link>
-              <button
-                onClick={() => setIsSslModalOpen(true)}
-                className="px-4 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-xs transition-colors inline-flex items-center gap-1.5"
-              >
-                <ZapIcon className="w-3.5 h-3.5 text-blue-300" />
-                <span>Upgrade Pro</span>
-              </button>
             </div>
           </div>
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
@@ -465,8 +456,8 @@ export default function DashboardPage() {
       {/* Preview Modal */}
       {previewReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-transparent my-8 space-y-3">
-            <div className="flex justify-between items-center bg-white px-5 py-3.5 rounded-3xl shadow-sm">
+          <div className="w-full max-w-2xl bg-transparent my-8 space-y-3 print:my-0 print:space-y-0">
+            <div className="flex justify-between items-center bg-white px-5 py-3.5 rounded-3xl shadow-sm print:hidden">
               <span className="font-display font-bold text-sm text-slate-900">
                 Voucher #{previewReceipt.id}
               </span>
@@ -489,19 +480,12 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <ReceiptPreview receipt={previewReceipt} business={currentBiz} />
+            <div id="printable-receipt-area">
+              <ReceiptPreview receipt={previewReceipt} business={currentBiz} />
+            </div>
           </div>
         </div>
       )}
-
-      {/* SSLCommerz Modal */}
-      <SSLCommerzModal
-        isOpen={isSslModalOpen}
-        onClose={() => setIsSslModalOpen(false)}
-        onSuccess={(gw) => {
-          showToast(`Upgraded to SlipDo Pro via ${gw} sandbox!`);
-        }}
-      />
     </div>
   );
 }

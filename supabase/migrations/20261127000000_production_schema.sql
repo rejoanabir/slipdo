@@ -389,3 +389,46 @@ CREATE POLICY "Merchants update own receipt assets"
     ON storage.objects FOR UPDATE
     TO authenticated
     USING (bucket_id = 'receipts' AND (auth.uid())::text = (storage.foldername(name))[1]);
+
+-- ==============================================================================
+-- 12. Stored Procedures (RPC Functions for Frontend)
+-- ==============================================================================
+
+-- Lookup receipt by cryptographic token (for public verification)
+CREATE OR REPLACE FUNCTION public.get_receipt_by_token(lookup_token text)
+RETURNS SETOF public.receipts
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT * FROM public.receipts WHERE token = lookup_token LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_receipt_by_token(text) TO anon, authenticated;
+
+-- Hard delete merchant account & wipe all related records
+CREATE OR REPLACE FUNCTION public.delete_merchant_account(target_user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Verify caller owns this account or is service role
+    IF auth.uid() <> target_user_id AND auth.role() <> 'service_role' THEN
+        RAISE EXCEPTION 'Unauthorized account deletion';
+    END IF;
+
+    -- Delete from application tables
+    DELETE FROM public.receipts WHERE merchant_id = target_user_id;
+    DELETE FROM public.customers WHERE merchant_id = target_user_id;
+    DELETE FROM public.businesses WHERE merchant_id = target_user_id;
+    DELETE FROM public.profiles WHERE id = target_user_id;
+
+    -- Delete from auth.users
+    DELETE FROM auth.users WHERE id = target_user_id;
+
+    RETURN true;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_merchant_account(uuid) TO authenticated;

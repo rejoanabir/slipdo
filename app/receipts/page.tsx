@@ -474,8 +474,8 @@ export default function ReceiptsArchivePage() {
 
       {previewReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="max-w-lg w-full space-y-3 my-8">
-            <div className="flex items-center justify-between text-white px-2">
+          <div className="max-w-lg w-full space-y-3 my-8 print:my-0 print:space-y-0">
+            <div className="flex items-center justify-between text-white px-2 print:hidden">
               <span className="font-bold text-sm">Voucher Preview</span>
               <div className="flex items-center gap-2">
                 <button

@@ -205,6 +205,28 @@ export class SupabaseClient {
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://slipdo.vercel.app';
           const redirectTo = params.options?.redirectTo || `${origin}/login`;
           const url = `${this.url}/auth/v1/authorize?provider=${encodeURIComponent(params.provider)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+          
+          // Pre-flight check to verify if the provider is enabled and configured in Supabase
+          try {
+            const probe = await fetch(url, { method: 'GET' });
+            if (!probe.ok) {
+              const errData = await probe.json().catch(() => ({}));
+              const msg = errData?.msg || errData?.message || 'Unsupported provider: provider is not enabled';
+              if (probe.status === 400 || msg.toLowerCase().includes('not enabled')) {
+                return {
+                  data: null,
+                  error: {
+                    message: 'Google Sign-In is not enabled yet in your Supabase project (Authentication -> Providers -> Google). Please enable it or sign in with email/password.',
+                    isProviderDisabled: true,
+                  },
+                };
+              }
+              return { data: null, error: { message: msg } };
+            }
+          } catch {
+            // If probe is blocked by network policy or CORS, fall back to navigation
+          }
+
           if (typeof window !== 'undefined') {
             window.location.href = url;
           }

@@ -10,7 +10,6 @@ import { BottomNav } from '../../components/BottomNav';
 import { BusinessDrawer } from '../../components/BusinessDrawer';
 import { SlipDoLogo } from '../../components/SlipDoLogo';
 import { CountryCodeSelect } from '../../components/CountryCodeSelect';
-import { SSLCommerzModal } from '../../components/SSLCommerzModal';
 import {
   CheckIcon,
   BuildingIcon,
@@ -32,7 +31,6 @@ export default function SettingsPage() {
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [logoLockup, setLogoLockup] = useState<LogoLockup>('voucher-check');
   const [isStoreDrawerOpen, setIsStoreDrawerOpen] = useState(false);
-  const [isSslModalOpen, setIsSslModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // Account Deletion State
@@ -887,30 +885,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 4. SUBSCRIPTION & BILLING */}
-        <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-              <ShieldCheckIcon className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-display font-bold text-sm text-slate-900">SlipDo Pro Merchant Tier</h4>
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">Active</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">৳৪৯৯ / month · Next billing renewal on December 28, 2026</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsSslModalOpen(true)}
-            className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shrink-0"
-          >
-            Manage via SSLCommerz
-          </button>
-        </div>
-
-        {/* 5. DANGER ZONE: PERMANENT ACCOUNT DELETION */}
+        {/* 4. DANGER ZONE: PERMANENT ACCOUNT DELETION */}
         <div className="bg-rose-50/60 rounded-3xl p-5 sm:p-7 border border-rose-200 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -1027,14 +1002,6 @@ export default function SettingsPage() {
           showToast('Store outlet removed');
         }}
         lang={lang}
-      />
-
-      <SSLCommerzModal
-        isOpen={isSslModalOpen}
-        onClose={() => setIsSslModalOpen(false)}
-        onSuccess={(method) => {
-          showToast(`Pro Tier renewed successfully via ${method}!`);
-        }}
       />
     </div>
   );

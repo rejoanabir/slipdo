@@ -40,6 +40,7 @@ export default function LoginPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [resendCountdown, setResendCountdown] = useState(60);
   const [verificationNotice, setVerificationNotice] = useState('');
+  const [showGoogleHelp, setShowGoogleHelp] = useState(false);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Security: Progressive attempt throttling
@@ -481,12 +482,38 @@ export default function LoginPage() {
       });
       if (error) {
         showToast(error.message || 'Google Sign-In failed', 'error');
+        if (error.isProviderDisabled || error.message?.toLowerCase().includes('not enabled')) {
+          setShowGoogleHelp(true);
+        }
       }
     } catch {
       showToast('Google Sign-In initialization failed', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoAccess = () => {
+    const demoBiz: Business = {
+      id: 'biz_demo_store',
+      name: 'Demo Retail Store',
+      category: 'General Retail & Services',
+      address: 'Dhaka, Bangladesh',
+      phone: '+880 1711-000000',
+      bin: '1234567890',
+      currency: 'BDT',
+      currencySymbol: '৳',
+    };
+    StorageService.saveBusiness(demoBiz);
+    StorageService.setActiveBusiness(demoBiz.id);
+    StorageService.setCurrentUser({
+      id: 'usr_demo_merchant',
+      email: 'demo@slipdo.app',
+      name: 'Demo Merchant',
+    });
+    StorageService.markStoreSetupCompleted('usr_demo_merchant');
+    showToast('Signed in as Demo Merchant!');
+    window.location.href = '/';
   };
 
   if (!mounted) {
@@ -706,6 +733,17 @@ export default function LoginPage() {
               <GoogleIcon className="w-4 h-4" />
               <span>Log in with Google</span>
             </button>
+
+            {/* Quick Demo Merchant Access */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleDemoAccess}
+                className="w-full py-2.5 px-4 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <span>Instant Demo Access (Test without signup)</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -797,6 +835,59 @@ export default function LoginPage() {
           <ShieldCheckIcon className="w-3.5 h-3.5 text-slate-400" />
           <span>256-Bit Cryptographically Secured Authentication</span>
         </div>
+
+        {/* Google OAuth Provider Setup Help Modal */}
+        {showGoogleHelp && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <GoogleIcon className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-display font-bold text-sm text-slate-900">Enable Google Sign-In</h3>
+                </div>
+                <button
+                  onClick={() => setShowGoogleHelp(false)}
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-3 leading-relaxed">
+                <p>
+                  Google OAuth is currently <strong>disabled</strong> in your Supabase project. To enable one-click Google Sign-In:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-slate-700">
+                  <li>
+                    Open <strong>Supabase Dashboard</strong> &rarr; <strong>Authentication</strong> &rarr; <strong>Providers</strong> &rarr; <strong>Google</strong>.
+                  </li>
+                  <li>
+                    In Google Cloud Console, set Authorized Redirect URI to:
+                    <div className="mt-1 p-2 bg-slate-100 rounded-lg font-mono text-[11px] text-slate-800 break-all select-all">
+                      https://lexyffenbdoysbfxdsen.supabase.co/auth/v1/callback
+                    </div>
+                  </li>
+                  <li>
+                    Paste your Google <strong>Client ID</strong> and <strong>Client Secret</strong> into Supabase and toggle <strong>Enable Google provider</strong>.
+                  </li>
+                </ol>
+                <p className="text-[11px] text-slate-500">
+                  In the meantime, you can log in using your email and password or use Instant Demo Access.
+                </p>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleHelp(false)}
+                  className="flex-1 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
+                >
+                  Got It
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
